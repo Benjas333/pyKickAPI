@@ -433,6 +433,8 @@ class KickWebhook:
         ) -> str:
                 """A message is sent to the broadcaster's chat room.
 
+                For more information, see here: https://docs.kick.com/events/event-types#chat-message
+
                 Args:
                     broadcaster_user_id (int): The ID of the user's chat room you want to listen to.
                     callback (EventCallback[ChatMessageEvent]): Function for callback.
@@ -449,6 +451,8 @@ class KickWebhook:
         ) -> str:
                 """A user followed the broadcaster's channel.
 
+                For more information, see here: https://docs.kick.com/events/event-types#channel-follow
+
                 Args:
                     broadcaster_user_id (int): The ID of the user's channel you want to listen to.
                     callback (EventCallback[ChannelFollowEvent]): Function for callback.
@@ -464,6 +468,8 @@ class KickWebhook:
                 callback: EventCallback[ChannelSubscriptionGiftsEvent],
         ) -> str:
                 """A user gifted one or more subscriptions to the broadcaster's channel.
+
+                For more information, see here: https://docs.kick.com/events/event-types#channel-subscription-gifts
 
                 Args:
                     broadcaster_user_id (int): The ID of the user's channel you want to listen to.
@@ -486,6 +492,8 @@ class KickWebhook:
         ) -> str:
                 """A user subscribed for the first time to the broadcaster's channel.
 
+                For more information, see here: https://docs.kick.com/events/event-types#channel-subscription-created
+
                 Args:
                     broadcaster_user_id (int): The ID of the user's channel you want to listen to.
                     callback (EventCallback[ChannelSubscriptionNewEvent]): Function for callback.
@@ -506,6 +514,8 @@ class KickWebhook:
                 callback: EventCallback[ChannelSubscriptionRenewalEvent],
         ) -> str:
                 """A user resubscribed to the broadcaster's channel.
+
+                For more information, see here: https://docs.kick.com/events/event-types#channel-subscription-renewal
 
                 Args:
                     broadcaster_user_id (int): The ID of the user's channel you want to listen to.
@@ -528,6 +538,8 @@ class KickWebhook:
         ) -> str:
                 """The broadcaster livestream metadata has changed.
 
+                For more information, see here: https://docs.kick.com/events/event-types#livestream-metadata-updated
+
                 Args:
                     broadcaster_user_id (int): The ID of the user you want to listen to.
                     callback (EventCallback[LivestreamMetadataUpdatedEvent]): Function for callback.
@@ -549,6 +561,8 @@ class KickWebhook:
         ) -> str:
                 """The broadcaster live status has changed.
 
+                For more information, see here: https://docs.kick.com/events/event-types#livestream-status-updated
+
                 Args:
                     broadcaster_user_id (int): The ID of the user you want to listen to.
                     callback (EventCallback[LivestreamStatusUpdatedEvent]): Function for callback.
@@ -569,6 +583,8 @@ class KickWebhook:
                 callback: EventCallback[ModerationBannedEvent],
         ) -> str:
                 """A moderator has banned a user in the broadcaster's chat room.
+
+                For more information, see here: https://docs.kick.com/events/event-types#moderation-banned
 
                 Args:
                     broadcaster_user_id (int): The ID of the user's chat room you want to listen to.
