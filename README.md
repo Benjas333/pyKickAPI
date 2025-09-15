@@ -16,9 +16,9 @@ Install using uv:
 uv add pyKickAPI
 ```
 
-## Documentation
+<!-- ## Documentation
 
-A full API documentation can be found on readthedocs.org.
+A full API documentation can be found on readthedocs.org. -->
 
 ## Usage
 
