@@ -9,12 +9,12 @@ Heavily inspired on [pyTwitchAPI](https://github.com/Teekeks/pyTwitchAPI). My mi
 Install using pip:
 
 ```
-pip install pyKickAPI
+pip install kickAPI
 ```
 
 Install using uv:
 ```
-uv add pyKickAPI
+uv add kickAPI
 ```
 
 <!-- ## Documentation
