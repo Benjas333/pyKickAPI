@@ -1,0 +1,3 @@
+exclude .gitignore
+prune .venv
+prune tests

@@ -1,0 +1,9 @@
+{
+        "recommendations": [
+                "ms-python.pylint",
+                "ms-python.python",
+                "mikestead.dotenv",
+                "charliermarsh.ruff",
+                "chrx.python-inline-3"
+        ]
+}

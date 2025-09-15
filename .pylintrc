@@ -1,0 +1,7 @@
+[MASTER]
+load-plugins=linter.kick_obj_extras
+init-hook='import sys; sys.path.insert(0, "src")'
+
+[MESSAGES CONTROL]
+disable=all
+enable=kick-obj-extras

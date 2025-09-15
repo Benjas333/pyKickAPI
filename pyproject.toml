@@ -1,0 +1,65 @@
+[project]
+name = "kickAPI"
+version = "0.1.0"
+description = "A Python 3.9+ implementation of the Kick API and Webhook. Highly inspired on twitchAPI"
+readme = "README.md"
+authors = [
+    { name = "Benjas333", email = "seston30@gmail.com" }
+]
+requires-python = ">=3.9"
+license = "MIT"
+dependencies = [
+    "aiofiles>=24.1.0",
+    "cryptography>=45.0.7",
+    "enum-tools>=0.13.0",
+    "httpx>=0.28.1",
+    "orjson>=3.11.3",
+    "pydantic>=2.11.9",
+    "socketify>=0.0.31",
+    "strenum>=0.4.15",
+]
+keywords = ['kick', 'kick.com', 'chat', 'webhook', 'event sub', 'EventSub', 'api']
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Topic :: Communications",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Repository = "https://github.com/Benjas333/pyKickAPI"
+Issues = "https://github.com/Benjas333/pyKickAPI/issues"
+Changelog = "https://github.com/Benjas333/pyKickAPI/blob/main/CHANGELOG.md"
+
+[build-system]
+requires = ["uv_build>=0.8.11,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = "src"
+module-name = "kickAPI"
+
+[tool.pytest.ini_options]
+addopts = "-v --cov=kickAPI --cov-report=term-missing --html=src/tests/reports/report.html --self-contained-html"
+log_cli = true
+# log_cli_level = "DEBUG"
+log_level = "DEBUG"
+testpaths = ["src/tests"]
+
+[dependency-groups]
+dev = [
+    "pylint>=3.3.8",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "pytest-cov>=7.0.0",
+    "pytest-html>=4.1.1",
+    "python-dotenv>=1.1.1",
+]
