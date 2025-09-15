@@ -1,6 +1,7 @@
 # Python Kick API
 
 A full implementation of the Kick API and EventSub in Python 3.9+.
+
 Heavily inspired on [pyTwitchAPI](https://github.com/Teekeks/pyTwitchAPI). My mission is to maintain parity with the twitchAPI library for an easier manipulation of both libraries in any project.
 
 ## Installation
