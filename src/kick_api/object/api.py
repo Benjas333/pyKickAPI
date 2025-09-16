@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pydantic import dataclasses, field_validator  # Field
 
-from kickAPI.object.base import KickObject, KickObjectExtras  # AsyncIterKickObject,
+from kick_api.object.base import KickObject, KickObjectExtras  # AsyncIterKickObject,
 
 __all__ = [
         "Category",

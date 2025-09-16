@@ -1,4 +1,4 @@
 # noqa: N999
-from kickAPI.kick import Kick
+from kick_api.kick import Kick
 
 __all__ = ["Kick"]

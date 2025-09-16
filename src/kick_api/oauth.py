@@ -15,17 +15,17 @@ import aiofiles
 import httpx
 import orjson as json
 
-from kickAPI import helper
-from kickAPI.constants import KICK_API_BASE_URL, KICK_AUTH_BASE_URL, Endpoints
-from kickAPI.object.api import TokenIntrospection
-from kickAPI.servers import AuthServer
-from kickAPI.types import InvalidRefreshTokenException, KickAPIException, MissingScopeException, OAuthScope
+from kick_api import helper
+from kick_api.constants import KICK_API_BASE_URL, KICK_AUTH_BASE_URL, Endpoints
+from kick_api.object.api import TokenIntrospection
+from kick_api.servers import AuthServer
+from kick_api.types import InvalidRefreshTokenException, KickAPIException, MissingScopeException, OAuthScope
 
 if TYPE_CHECKING:
         from collections.abc import Awaitable
         from multiprocessing import managers, synchronize
 
-        from kickAPI.kick import Kick
+        from kick_api.kick import Kick
 
 __all__ = [
         "UserAuthenticationStorageHelper",

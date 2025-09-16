@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, Any, get_origin
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from kickAPI.helper import first
-from kickAPI.object.api import (
+from kick_api.helper import first
+from kick_api.object.api import (
         Category,
         Channel,
         DeleteModerationBanResponse,
@@ -22,12 +22,12 @@ from kickAPI.object.api import (
         TokenIntrospection,
         User,
 )
-from kickAPI.types import WebhookEvents
+from kick_api.types import WebhookEvents
 
 if TYPE_CHECKING:
         from collections.abc import Generator
 
-        from kickAPI.kick import Kick
+        from kick_api.kick import Kick
 
 
 # -------------------

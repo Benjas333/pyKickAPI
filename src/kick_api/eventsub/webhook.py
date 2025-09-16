@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar, Union
 import orjson as json
 from pydantic import ValidationError
 
-from kickAPI.eventsub import utils
-from kickAPI.eventsub.events import (
+from kick_api.eventsub import utils
+from kick_api.eventsub.events import (
         ChannelFollowEvent,
         ChannelSubscriptionGiftsEvent,
         ChannelSubscriptionNewEvent,
@@ -26,17 +26,17 @@ from kickAPI.eventsub.events import (
         ModerationBannedEvent,
         _CommonEventResponse,
 )
-from kickAPI.helper import ServerStatus, SSLOptions
-from kickAPI.object.eventsub import WebhookVerificationHeaders
-from kickAPI.servers import WebhookServer
-from kickAPI.types import (
+from kick_api.helper import ServerStatus, SSLOptions
+from kick_api.object.eventsub import WebhookVerificationHeaders
+from kick_api.servers import WebhookServer
+from kick_api.types import (
         EventSubSubscriptionError,
         KickAPIException,
         WebhookEvents,
 )
 
 if TYPE_CHECKING:
-        from kickAPI.kick import Kick
+        from kick_api.kick import Kick
 
 __all__ = ["KickWebhook", "SSLOptions"]
 E = TypeVar("E", bound=_CommonEventResponse)

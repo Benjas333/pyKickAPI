@@ -4,17 +4,20 @@ A full implementation of the Kick API and EventSub in Python 3.9+.
 
 Heavily inspired on [pyTwitchAPI](https://github.com/Teekeks/pyTwitchAPI). My mission is to maintain parity with the twitchAPI library for an easier manipulation of both libraries in any project.
 
+> [!NOTE]
+> The library was intended to be called kickAPI to have parity with twitchAPI, but the name is already taken. So the library was re-branded to kick_api.
+
 ## Installation
 
 Install using pip:
 
 ```
-pip install kickAPI
+pip install kick_api
 ```
 
 Install using uv:
 ```
-uv add kickAPI
+uv add kick_api
 ```
 
 <!-- ## Documentation
@@ -28,8 +31,8 @@ A full API documentation can be found on readthedocs.org. -->
 Setting up an instance of the Kick API and get your User ID.
 
 ```python
-from kickAPI.kick import Kick
-from kickAPI.helper import first
+from kick_api.kick import Kick
+from kick_api.helper import first
 import asyncio
 
 async def kick_example():
@@ -54,7 +57,7 @@ The Kick API knows 2 different authentications. App and User Authentication. Whi
 ###  App Authentication
 
 ```python
-from kickAPI.kick import Kick
+from kick_api.kick import Kick
 kick = await Kick(APP_ID, APP_SECRET)
 ```
 
@@ -63,9 +66,9 @@ kick = await Kick(APP_ID, APP_SECRET)
 To get a user auth token, the user has to explicitly click "Allow access" on the Kick website. The library includes an Authenticator. Just remember to add `http://localhost:36571` in your redirect URIs in the [dev settings tab](https://kick.com/settings/developer).
 
 ```python
-from kickAPI.kick import Kick
-from kickAPI.oauth import UserAuthenticator
-from kickAPI.type import OAuthScope
+from kick_api.kick import Kick
+from kick_api.oauth import UserAuthenticator
+from kick_api.type import OAuthScope
 
 kick = await Kick(APP_ID, APP_SECRET)
 
@@ -79,7 +82,7 @@ await kick.set_user_authentication(token, target_scope, refresh_token)
 
 You can reuse this token and use the refresh_token to renew it:
 ```python
-from kickAPI.oauth import refresh_access_token
+from kick_api.oauth import refresh_access_token
 new_token, new_refresh_token = await refresh_access_token(refresh_token, APP_ID, APP_SECRET)
 ```
 
@@ -88,7 +91,7 @@ new_token, new_refresh_token = await refresh_access_token(refresh_token, APP_ID,
 Optionally you can set a callback for both user access token refresh and app access token refresh.
 
 ```python
-from kickAPI.kick import Kick
+from kick_api.kick import Kick
 
 async def app_refresh(token: str):
         print(f'my new ap token is:{token}')

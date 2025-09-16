@@ -6,8 +6,8 @@ from typing import Literal
 
 from pydantic import AliasChoices, AliasGenerator, ConfigDict, Field, dataclasses
 
-from kickAPI.object.api import Category
-from kickAPI.object.base import KickObject
+from kick_api.object.api import Category
+from kick_api.object.base import KickObject
 
 __all__ = [
         "AnonUserInfo",

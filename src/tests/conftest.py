@@ -9,7 +9,7 @@ import pytest
 import pytest_asyncio
 from dotenv import load_dotenv
 
-from kickAPI.kick import Kick
+from kick_api.kick import Kick
 
 if TYPE_CHECKING:
         from collections.abc import AsyncGenerator, Generator

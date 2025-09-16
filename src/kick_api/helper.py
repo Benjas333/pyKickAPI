@@ -11,8 +11,8 @@ if TYPE_CHECKING:
         from collections.abc import AsyncGenerator
         from logging import Logger
 
-        from kickAPI.object.api import _Endpoint
-        from kickAPI.types import OAuthScope
+        from kick_api.object.api import _Endpoint
+        from kick_api.types import OAuthScope
 
 T = TypeVar("T")
 

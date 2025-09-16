@@ -4,9 +4,9 @@ from pathlib import PurePath
 
 import pytest
 
-from kickAPI.kick import Kick
-from kickAPI.oauth import UserAuthenticationStorageHelper
-from kickAPI.types import OAuthScope
+from kick_api.kick import Kick
+from kick_api.oauth import UserAuthenticationStorageHelper
+from kick_api.types import OAuthScope
 
 SCOPES = [
         OAuthScope.CHANNEL_READ,

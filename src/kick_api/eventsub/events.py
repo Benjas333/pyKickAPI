@@ -5,8 +5,8 @@ from datetime import datetime
 
 from pydantic import Field, RootModel, dataclasses
 
-from kickAPI.object.base import KickObject
-from kickAPI.object.eventsub import AnonUserInfo, BannedMetadata, Emote, LivestreamMetadata, RepliedMessage, UserInfo
+from kick_api.object.base import KickObject
+from kick_api.object.eventsub import AnonUserInfo, BannedMetadata, Emote, LivestreamMetadata, RepliedMessage, UserInfo
 
 __all__ = [
         "ChannelFollowEvent",

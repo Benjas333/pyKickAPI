@@ -16,16 +16,16 @@ from typing import (
 import httpx
 import orjson as json
 
-from kickAPI import helper
-from kickAPI.constants import (
+from kick_api import helper
+from kick_api.constants import (
         KICK_API_BASE_URL,
         KICK_AUTH_BASE_URL,
         Endpoints,
         ResultType,
 )
-from kickAPI.object import api
-from kickAPI.object.base import AsyncIterData, AsyncIterKickObject, KickObject
-from kickAPI.types import (
+from kick_api.object import api
+from kick_api.object.base import AsyncIterData, AsyncIterKickObject, KickObject
+from kick_api.types import (
         InvalidTokenException,
         KickAPIException,
         KickAuthorizationException,
@@ -249,7 +249,7 @@ class Kick:
                         await self._refresh_app_token()
                         return
 
-                from kickAPI.oauth import refresh_access_token
+                from kick_api.oauth import refresh_access_token
 
                 if self._user_token_refresh_lock:
                         while self._user_token_refresh_lock:
