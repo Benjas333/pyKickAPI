@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar, Union
 import orjson as json
 from pydantic import ValidationError
 
-from kick_api.eventsub import utils
-from kick_api.eventsub.events import (
+from betterKickAPI.eventsub import utils
+from betterKickAPI.eventsub.events import (
         ChannelFollowEvent,
         ChannelSubscriptionGiftsEvent,
         ChannelSubscriptionNewEvent,
@@ -26,17 +26,17 @@ from kick_api.eventsub.events import (
         ModerationBannedEvent,
         _CommonEventResponse,
 )
-from kick_api.helper import ServerStatus, SSLOptions
-from kick_api.object.eventsub import WebhookVerificationHeaders
-from kick_api.servers import WebhookServer
-from kick_api.types import (
+from betterKickAPI.helper import ServerStatus, SSLOptions
+from betterKickAPI.object.eventsub import WebhookVerificationHeaders
+from betterKickAPI.servers import WebhookServer
+from betterKickAPI.types import (
         EventSubSubscriptionError,
         KickAPIException,
         WebhookEvents,
 )
 
 if TYPE_CHECKING:
-        from kick_api.kick import Kick
+        from betterKickAPI.kick import Kick
 
 __all__ = ["KickWebhook", "SSLOptions"]
 E = TypeVar("E", bound=_CommonEventResponse)
@@ -79,25 +79,26 @@ class KickWebhook:
         ) -> None:
                 """
                 ## Dev note:
-                    *If your `Kick` instance has user authentication, the Webhook will only be able to subscribe to events
-                    linked to that user (the official Kick API overrides all the endpoints to use the `broadcaster_user_id`
-                    linked to the user auth token).\n
-                    If you want to subscribe to multiple broadcasters, please use a `Kick` instance with only app
-                    authentication or set `force_app_auth` to `True`.*
+                        *If your `Kick` instance has user authentication, the Webhook will only be able to subscribe to
+                        events linked to that user (the official Kick API overrides all the endpoints to use the
+                        `broadcaster_user_id` linked to the user auth token).\n
+                        If you want to subscribe to multiple broadcasters, please use a `Kick` instance with only app
+                        authentication or set `force_app_auth` to `True`.*
 
                 Args:
-                    kick (Kick): An app authenticated instance of `Kick`.
-                    public_key_pem (str | None, optional): Public Key that will be used to verify messages.
-                        Defaults to `None`.
-                    auto_fetch_public_key (bool, optional): If true, automatically fetches the public key from the API
-                        endpoint. Defaults to `True`.
-                    force_app_auth (bool): If true, app auth will be used in all the EventSub related endpoints. Otherwise,
-                        user auth will be used if available. Defaults to `False`.
-                    callback_loop (asyncio.AbstractEventLoop | None, optional): The asyncio event loop to be used for
-                        callbacks. Defaults to `None`.\n
-                        Set this if you or a library you use cares about which asyncio event loop is running the callbacks.
-                    msg_id_history_max_length (int, optional): The amount of messages being considered for the duplicate
-                        message deduplication. Defaults to `50`.
+                        kick (Kick): An app authenticated instance of `Kick`.
+                        public_key_pem (str | None, optional): Public Key that will be used to verify messages.
+                                Defaults to `None`.
+                        auto_fetch_public_key (bool, optional): If true, automatically fetches the public key from the API
+                                endpoint. Defaults to `True`.
+                        force_app_auth (bool): If true, app auth will be used in all the EventSub related endpoints.
+                                Otherwise, user auth will be used if available. Defaults to `False`.
+                        callback_loop (asyncio.AbstractEventLoop | None, optional): The asyncio event loop to be used for
+                                callbacks. Defaults to `None`.\n
+                                Set this if you or a library you use cares about which asyncio event loop is running the
+                                callbacks.
+                        msg_id_history_max_length (int, optional): The amount of messages being considered for the duplicate
+                                message deduplication. Defaults to `50`.
                 """
                 self.logger = getLogger("kickAPI.webhook.KickWebhook")
                 self._kick = kick
@@ -195,12 +196,12 @@ class KickWebhook:
                 """Starts the EventSub client.
 
                 Args:
-                    port (int, optional): The port on which this webhook should run. Defaults to 3000.
-                    host_binding (str, optional): The host to bind the internal server to. Defaults to "127.0.0.1".
-                    ssl_options (SSLOptions | None, optional): Optional SSLOptions to be used. Defaults to None.
+                        port (int, optional): The port on which this webhook should run. Defaults to 3000.
+                        host_binding (str, optional): The host to bind the internal server to. Defaults to "127.0.0.1".
+                        ssl_options (SSLOptions | None, optional): Optional SSLOptions to be used. Defaults to None.
 
                 Raises:
-                    RuntimeError: If EventSub is already running.
+                        RuntimeError: If EventSub is already running.
                 """
                 if self._status != ServerStatus.CLOSED:
                         raise RuntimeError("Already started")
@@ -229,10 +230,10 @@ class KickWebhook:
                 """Stops the EventSub client.
 
                 # Note:
-                    This also unsubscribes from all known subscriptions if `unsubscribe_on_stop` is `True`.
+                        This also unsubscribes from all known subscriptions if `unsubscribe_on_stop` is `True`.
 
                 Raises:
-                    RuntimeError: If EventSub is not running.
+                        RuntimeError: If EventSub is not running.
                 """
                 if self._status in (ServerStatus.CLOSED, ServerStatus.CLOSING) or not self.__process:
                         raise RuntimeError("KickWebhook is not running")
@@ -313,10 +314,10 @@ class KickWebhook:
                 """Unsubscribe from a specific event.
 
                 Args:
-                    subscription_id (str): The subscription ID.
+                        subscription_id (str): The subscription ID.
 
                 Returns:
-                    bool: `True` if it was successful, otherwise `False`.
+                        bool: `True` if it was successful, otherwise `False`.
                 """
                 try:
                         await self._kick.delete_events_subscriptions([subscription_id], force_app_auth=self._force_app_auth)
@@ -357,11 +358,11 @@ class KickWebhook:
                 """Public endpoint handler. In case you don't want to use the internal server.
 
                 Args:
-                    data (bytes): The request data in bytes.
-                    headers (WebhookVerificationHeaders): A helper class to parse the headers.
+                        data (bytes): The request data in bytes.
+                        headers (WebhookVerificationHeaders): A helper class to parse the headers.
 
                 Returns:
-                    WebhookServerResponse: A simple dataclass with `status` and `text` attributes.
+                        WebhookServerResponse: A simple dataclass with `status` and `text` attributes.
                 """
                 resp = WebhookServerResponse()
 
@@ -436,11 +437,11 @@ class KickWebhook:
                 For more information, see here: https://docs.kick.com/events/event-types#chat-message
 
                 Args:
-                    broadcaster_user_id (int): The ID of the user's chat room you want to listen to.
-                    callback (EventCallback[ChatMessageEvent]): Function for callback.
+                        broadcaster_user_id (int): The ID of the user's chat room you want to listen to.
+                        callback (EventCallback[ChatMessageEvent]): Function for callback.
 
                 Returns:
-                    str: The subscription ID.
+                        str: The subscription ID.
                 """
                 return await self._subscribe(WebhookEvents.CHAT_MESSAGE, broadcaster_user_id, callback, ChatMessageEvent)
 
@@ -454,11 +455,11 @@ class KickWebhook:
                 For more information, see here: https://docs.kick.com/events/event-types#channel-follow
 
                 Args:
-                    broadcaster_user_id (int): The ID of the user's channel you want to listen to.
-                    callback (EventCallback[ChannelFollowEvent]): Function for callback.
+                        broadcaster_user_id (int): The ID of the user's channel you want to listen to.
+                        callback (EventCallback[ChannelFollowEvent]): Function for callback.
 
                 Returns:
-                    str: The subscription ID.
+                        str: The subscription ID.
                 """
                 return await self._subscribe(WebhookEvents.CHANNEL_FOLLOW, broadcaster_user_id, callback, ChannelFollowEvent)
 
@@ -472,11 +473,11 @@ class KickWebhook:
                 For more information, see here: https://docs.kick.com/events/event-types#channel-subscription-gifts
 
                 Args:
-                    broadcaster_user_id (int): The ID of the user's channel you want to listen to.
-                    callback (EventCallback[ChannelSubscriptionGiftsEvent]): Function for callback.
+                        broadcaster_user_id (int): The ID of the user's channel you want to listen to.
+                        callback (EventCallback[ChannelSubscriptionGiftsEvent]): Function for callback.
 
                 Returns:
-                    str: The subscription ID.
+                        str: The subscription ID.
                 """
                 return await self._subscribe(
                         WebhookEvents.CHANNEL_SUBSCRIPTION_GIFTS,
@@ -495,11 +496,11 @@ class KickWebhook:
                 For more information, see here: https://docs.kick.com/events/event-types#channel-subscription-created
 
                 Args:
-                    broadcaster_user_id (int): The ID of the user's channel you want to listen to.
-                    callback (EventCallback[ChannelSubscriptionNewEvent]): Function for callback.
+                        broadcaster_user_id (int): The ID of the user's channel you want to listen to.
+                        callback (EventCallback[ChannelSubscriptionNewEvent]): Function for callback.
 
                 Returns:
-                    str: The subscription ID.
+                        str: The subscription ID.
                 """
                 return await self._subscribe(
                         WebhookEvents.CHANNEL_SUBSCRIPTION_CREATED,
@@ -518,11 +519,11 @@ class KickWebhook:
                 For more information, see here: https://docs.kick.com/events/event-types#channel-subscription-renewal
 
                 Args:
-                    broadcaster_user_id (int): The ID of the user's channel you want to listen to.
-                    callback (EventCallback[ChannelSubscriptionRenewalEvent]): Function for callback.
+                        broadcaster_user_id (int): The ID of the user's channel you want to listen to.
+                        callback (EventCallback[ChannelSubscriptionRenewalEvent]): Function for callback.
 
                 Returns:
-                    str: The subscription ID.
+                        str: The subscription ID.
                 """
                 return await self._subscribe(
                         WebhookEvents.CHANNEL_SUBSCRIPTION_RENEWAL,
@@ -541,11 +542,11 @@ class KickWebhook:
                 For more information, see here: https://docs.kick.com/events/event-types#livestream-metadata-updated
 
                 Args:
-                    broadcaster_user_id (int): The ID of the user you want to listen to.
-                    callback (EventCallback[LivestreamMetadataUpdatedEvent]): Function for callback.
+                        broadcaster_user_id (int): The ID of the user you want to listen to.
+                        callback (EventCallback[LivestreamMetadataUpdatedEvent]): Function for callback.
 
                 Returns:
-                    str: The subscription ID.
+                        str: The subscription ID.
                 """
                 return await self._subscribe(
                         WebhookEvents.LIVESTREAM_METADATA_UPDATED,
@@ -564,11 +565,11 @@ class KickWebhook:
                 For more information, see here: https://docs.kick.com/events/event-types#livestream-status-updated
 
                 Args:
-                    broadcaster_user_id (int): The ID of the user you want to listen to.
-                    callback (EventCallback[LivestreamStatusUpdatedEvent]): Function for callback.
+                        broadcaster_user_id (int): The ID of the user you want to listen to.
+                        callback (EventCallback[LivestreamStatusUpdatedEvent]): Function for callback.
 
                 Returns:
-                    str: The subscription ID.
+                        str: The subscription ID.
                 """
                 return await self._subscribe(
                         WebhookEvents.LIVESTREAM_STATUS_UPDATED,
@@ -587,11 +588,11 @@ class KickWebhook:
                 For more information, see here: https://docs.kick.com/events/event-types#moderation-banned
 
                 Args:
-                    broadcaster_user_id (int): The ID of the user's chat room you want to listen to.
-                    callback (EventCallback[ModerationBannedEvent]): Function for callback.
+                        broadcaster_user_id (int): The ID of the user's chat room you want to listen to.
+                        callback (EventCallback[ModerationBannedEvent]): Function for callback.
 
                 Returns:
-                    str: The subscription ID.
+                        str: The subscription ID.
                 """
                 return await self._subscribe(
                         WebhookEvents.MODERATION_BANNED,

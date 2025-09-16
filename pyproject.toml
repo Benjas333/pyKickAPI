@@ -1,5 +1,5 @@
 [project]
-name = "kick_api"
+name = "betterKickAPI"
 version = "0.1.0"
 description = "A Python 3.9+ implementation of the Kick API and Webhook. Highly inspired on twitchAPI"
 readme = "README.md"
@@ -45,10 +45,10 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-root = "src"
-module-name = "kick_api"
+module-name = "betterKickAPI"
 
 [tool.pytest.ini_options]
-addopts = "-v --cov=kick_api --cov-report=term-missing --html=src/tests/reports/report.html --self-contained-html"
+addopts = "-v --cov=betterKickAPI --cov-report=term-missing --html=src/tests/reports/report.html --self-contained-html"
 # log_cli = true
 # log_cli_level = "DEBUG"
 log_level = "DEBUG"

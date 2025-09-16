@@ -15,17 +15,17 @@ import aiofiles
 import httpx
 import orjson as json
 
-from kick_api import helper
-from kick_api.constants import KICK_API_BASE_URL, KICK_AUTH_BASE_URL, Endpoints
-from kick_api.object.api import TokenIntrospection
-from kick_api.servers import AuthServer
-from kick_api.types import InvalidRefreshTokenException, KickAPIException, MissingScopeException, OAuthScope
+from betterKickAPI import helper
+from betterKickAPI.constants import KICK_API_BASE_URL, KICK_AUTH_BASE_URL, Endpoints
+from betterKickAPI.object.api import TokenIntrospection
+from betterKickAPI.servers import AuthServer
+from betterKickAPI.types import InvalidRefreshTokenException, KickAPIException, MissingScopeException, OAuthScope
 
 if TYPE_CHECKING:
         from collections.abc import Awaitable
         from multiprocessing import managers, synchronize
 
-        from kick_api.kick import Kick
+        from betterKickAPI.kick import Kick
 
 __all__ = [
         "UserAuthenticationStorageHelper",
@@ -163,12 +163,12 @@ class UserAuthenticator:
                 """Simple to use cliente for the Kick User authentication flow.
 
                 Args:
-                    kick (Kick): A `Kick` instance.
-                    scopes (list[OAuthScope]): List of desired OAuth scopes.
-                    url (str, optional): The reachable URL that will be opened in the browser. Defaults to "http://localhost:36571".
-                    host (str, optional): The host the webserver will bind to. Defaults to "127.0.0.1".
-                    port (int, optional): The port that will be used for the webserver. Defaults to `36571`.
-                    auth_base_url (str, optional): The URL to the Kick API auth server. Defaults to `KICK_AUTH_BASE_URL`.
+                        kick (Kick): A `Kick` instance.
+                        scopes (list[OAuthScope]): List of desired OAuth scopes.
+                        url (str, optional): The reachable URL that will be opened in the browser. Defaults to "http://localhost:36571".
+                        host (str, optional): The host the webserver will bind to. Defaults to "127.0.0.1".
+                        port (int, optional): The port that will be used for the webserver. Defaults to `36571`.
+                        auth_base_url (str, optional): The URL to the Kick API auth server. Defaults to `KICK_AUTH_BASE_URL`.
                 """
                 self._kick = kick
                 self._client_id = kick.app_id
@@ -264,7 +264,7 @@ class UserAuthenticator:
                 """The URL that will authenticate the app, used for headless server environments.
 
                 Returns:
-                    str: The URL
+                        str: The URL
                 """
                 return self._build_auth_url()
 
@@ -288,34 +288,37 @@ class UserAuthenticator:
                 If `user_token` is set, it will be used instead of launching the webserver and opening the browser.
 
                 Args:
-                    token_callback (Callable[[str  |  None, str  |  None], None] | None, optional): Function to call once the
-                        authentication finished. Defaults to `None`.
-                    auth_code_callback (Callable[[str], None] | None, optional): Function to call once the `auth_code` is
-                        received. Defaults to `None`.\n
-                        Added because twitchAPI calls `token_callback` too when receiving the `auth_code` for some reason.
-                    auth_code (str | None, optional): Code obtained from kick to request the access and refresh token.
-                        Defaults to `None`.
-                    browser_name (str | None, optional): The browser that should be used. Defaults to `None`.\n
-                        `None` means that the system default is used.\n
-                        See the `register webbrowser documentation`_ for more info.
-                    browser_new (int, optional): Controls in which way the link will be opened in the browser.
-                        Defaults to `2`.\n
-                        See the `open webbrowser documentation`_ for more info.
-                    use_browser (bool, optional): Controls if a browser should be opened. Defaults to `True`.\n
-                        If set to `False`, the browser will not be opened and the URL to be opened will either be printed to
-                        the info log or send to the specified callback function (controlled by `auth_url_callback`)
-                    auth_url_callback (Callable[[str], Awaitable[None]] | None, optional): An async callback that will be
-                        called with the url to be used for the authentication flow should `user_browser` be `False`.
-                        Defaults to `None`.\n
-                        If left as `None`, the URL will instead be printed to the info log.
+                        token_callback (Callable[[str  |  None, str  |  None], None] | None, optional): Function to call once
+                                the authentication finished. Defaults to `None`.
+                        auth_code_callback (Callable[[str], None] | None, optional): Function to call once the `auth_code` is
+                                received. Defaults to `None`.\n
+                                Added because twitchAPI calls `token_callback` too when receiving the `auth_code` for some
+                                reason.
+                        auth_code (str | None, optional): Code obtained from kick to request the access and refresh token.
+                                Defaults to `None`.
+                        browser_name (str | None, optional): The browser that should be used. Defaults to `None`.\n
+                                `None` means that the system default is used.\n
+                                See the `register webbrowser documentation`_ for more info.
+                        browser_new (int, optional): Controls in which way the link will be opened in the browser.
+                                Defaults to `2`.\n
+                                See the `open webbrowser documentation`_ for more info.
+                        use_browser (bool, optional): Controls if a browser should be opened. Defaults to `True`.\n
+                                If set to `False`, the browser will not be opened and the URL to be opened will either be
+                                printed to the info log or send to the specified callback function
+                                (controlled by `auth_url_callback`)
+                        auth_url_callback (Callable[[str], Awaitable[None]] | None, optional): An async callback that will be
+                                called with the url to be used for the authentication flow should `user_browser` be `False`.
+                                Defaults to `None`.\n
+                                If left as `None`, the URL will instead be printed to the info log.
 
                 Raises:
-                    KickAPIException: Authentication flow did not returned any `auth_code`.
-                    KickAPIException: Authentication failed.
-                    MissingScopeException: Authentication succeeded, but has missing OAuth scopes.
+                        KickAPIException: Authentication flow did not returned any `auth_code`.
+                        KickAPIException: Authentication failed.
+                        MissingScopeException: Authentication succeeded, but has missing OAuth scopes.
 
                 Returns:
-                    tuple[str, str] | None: None if `token_callback` is set, otherwise `access_token` and `refresh_token`.
+                        tuple[str, str] | None: None if `token_callback` is set, otherwise `access_token` and
+                                `refresh_token`.
 
                 .. _register webbrowser documentation:
                         https://docs.python.org/3/library/webbrowser.html#webbrowser.register
@@ -384,11 +387,9 @@ class UserAuthenticator:
 
 
 class UserAuthenticationStorageHelper:
-        """Helper for automating the generation and storage of a user auth token.\n
+        """Helper for automating the generation and storage of a user auth token.
 
-        Example:
-
-                .. code-block:: python
+        Basic example use::
 
                 kick = await Kick(APP_ID, APP_SECRET)
                 helper = UserAuthenticationStorageHelper(kick, TARGET_SCOPES)

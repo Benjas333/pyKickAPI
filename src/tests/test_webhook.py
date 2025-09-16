@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, get_origin
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from kick_api.eventsub.events import (
+from betterKickAPI.eventsub.events import (
         ChannelFollowEvent,
         ChannelSubscriptionGiftsEvent,
         ChannelSubscriptionNewEvent,
@@ -18,10 +18,10 @@ from kick_api.eventsub.events import (
         LivestreamStatusUpdatedEvent,
         ModerationBannedEvent,
 )
-from kick_api.eventsub.webhook import KickWebhook
+from betterKickAPI.eventsub.webhook import KickWebhook
 
 if TYPE_CHECKING:
-        from kick_api.kick import Kick
+        from betterKickAPI.kick import Kick
 
 CHANNEL_QUERIES = ["ijenz", "imantado", "elglogloking"]
 timeout = 30.0 # in seconds

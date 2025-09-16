@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum, auto
 from typing import Callable
 
-from kick_api.object.api import _Endpoint
+from betterKickAPI.object.api import _Endpoint
 
 __all__ = ["KICK_API_BASE_URL", "KICK_AUTH_BASE_URL", "Endpoints"]
 

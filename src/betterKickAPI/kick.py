@@ -16,16 +16,16 @@ from typing import (
 import httpx
 import orjson as json
 
-from kick_api import helper
-from kick_api.constants import (
+from betterKickAPI import helper
+from betterKickAPI.constants import (
         KICK_API_BASE_URL,
         KICK_AUTH_BASE_URL,
         Endpoints,
         ResultType,
 )
-from kick_api.object import api
-from kick_api.object.base import AsyncIterData, AsyncIterKickObject, KickObject
-from kick_api.types import (
+from betterKickAPI.object import api
+from betterKickAPI.object.base import AsyncIterData, AsyncIterKickObject, KickObject
+from betterKickAPI.types import (
         InvalidTokenException,
         KickAPIException,
         KickAuthorizationException,
@@ -66,14 +66,15 @@ class Kick:
                 """
 
                 Args:
-                    app_id (str): Your app id.
-                    app_secret (str | None, optional): Your app secret. Defaults to `None`.\n
-                        Leave as `None` if you only want to use User Authentication.
-                    authenticate_app (bool, optional): If true, auto generate an app token on startup. Defaults to `True`.
-                    base_url (str, optional): The URL to the Kick API. Defaults to `KICK_API_BASE_URL`.
-                    auth_base_url (str, optional): The URL to the Kick API auth server. Defaults to `KICK_AUTH_BASE_URL`.
-                    session_timeout (int, optional): Override the time in seconds before any request times out.
-                        Defaults to `300`.
+                        app_id (str): Your app id.
+                        app_secret (str | None, optional): Your app secret. Defaults to `None`.\n
+                                Leave as `None` if you only want to use User Authentication.
+                        authenticate_app (bool, optional): If true, auto generate an app token on startup.
+                                Defaults to `True`.
+                        base_url (str, optional): The URL to the Kick API. Defaults to `KICK_API_BASE_URL`.
+                        auth_base_url (str, optional): The URL to the Kick API auth server. Defaults to `KICK_AUTH_BASE_URL`.
+                        session_timeout (int, optional): Override the time in seconds before any request times out.
+                                Defaults to `300`.
                 """
                 self.app_id = app_id
                 self.app_secret = app_secret
@@ -122,7 +123,7 @@ class Kick:
                 """The set User oauth scopes.
 
                 Returns:
-                    list[OAuthScope]: List of User Oauth Scopes.
+                        list[OAuthScope]: List of User Oauth Scopes.
                 """
                 return self._user_auth_scope
 
@@ -131,7 +132,7 @@ class Kick:
                 """The app token that the api uses or None when not authenticated.
 
                 Returns:
-                    str | None: App Token.
+                        str | None: App Token.
                 """
                 return self._app_auth_token
 
@@ -140,18 +141,18 @@ class Kick:
                 """The current user auth token, `None` if no user authentication is set.
 
                 Returns:
-                    str | None: User Token.
+                        str | None: User Token.
                 """
                 return self._user_auth_token
 
         async def get_refreshed_user_auth_token(self) -> str | None:
                 """Validates the current set user auth token and returns it.
 
-                Note:
-                    Will re-auth if token is invalid.
+                Notes:
+                        Will re-auth if token is invalid.
 
                 Returns:
-                    str | None: User Token.
+                        str | None: User Token.
                 """
                 if self._user_auth_token is None:
                         return None
@@ -178,7 +179,7 @@ class Kick:
                 Can be either the app or user auth token or `None` if no authentication is set.
 
                 Returns:
-                    str | None: The currently used auth token or `None`.
+                        str | None: The currently used auth token or `None`.
                 """
                 return self._user_auth_token if self._has_user_auth else self.app_auth_token
 
@@ -249,7 +250,7 @@ class Kick:
                         await self._refresh_app_token()
                         return
 
-                from kick_api.oauth import refresh_access_token
+                from betterKickAPI.oauth import refresh_access_token
 
                 if self._user_token_refresh_lock:
                         while self._user_token_refresh_lock:
@@ -350,11 +351,11 @@ class Kick:
                 if response.status_code == 500:
                         msg = json.loads(response.content).get("message", default)
                         self.logger.warning('Failed with status %d. Message: "%s"', response.status_code, msg)
-                        raise KickBackendException(f'Internal Server Error: {msg}')
+                        raise KickBackendException(f"Internal Server Error: {msg}")
 
                 if response.status_code == 400:
                         msg = json.loads(response.content).get("message", default)
-                        raise KickAPIException(f'Bad Request ({response.status_code}): {msg}')
+                        raise KickAPIException(f"Bad Request ({response.status_code}): {msg}")
 
                 if response.status_code == 404:
                         try:
@@ -364,8 +365,8 @@ class Kick:
                         raise KickResourceNotFound(msg)
 
                 if response.status_code == 429:
-                        self.logger.warning('Reached rate limit, waiting for reset')
-                        await asyncio.sleep(5) # Magic number because there's no rate limit header in kick API responses
+                        self.logger.warning("Reached rate limit, waiting for reset")
+                        await asyncio.sleep(5)  # Magic number because there's no rate limit header in kick API responses
                         await response.aclose()
                         return await self._api_request(
                                 method,
@@ -681,7 +682,7 @@ class Kick:
                 """Authenticate with a fresh generated app token.
 
                 Dev Note:
-                    `scope` param removed because (apparently) Kick app tokens don't require scopes. Only user tokens.
+                        `scope` param removed because (apparently) Kick app tokens don't require scopes. Only user tokens do.
                 """
                 # self._app_auth_scope = scope
                 await self._generate_app_token()
@@ -695,10 +696,10 @@ class Kick:
                 """Set an app token, most likely only used for testing purposes.
 
                 Dev Note:
-                    `scope` param removed because (apparently) Kick app tokens don't require scopes. Only user tokens.
+                        `scope` param removed because (apparently) Kick app tokens don't require scopes. Only user tokens.
 
                 Args:
-                    token (str): The app token.
+                        token (str): The app token.
                 """
                 self._app_auth_token = token
                 # self._app_auth_scope = scope
@@ -753,16 +754,16 @@ class Kick:
                 """Set a user token to be used.
 
                 Args:
-                    token (str): The generated user token.
-                    scope (list[OAuthScope]): List of Authorization Scopes that the given user token has.\n
-                        Has to be provided if `auto_refresh_auth` is `True`.
-                    refresh_token (str | None, optional): The generated refresh token. Defaults to `None`.
-                    validate (bool, optional): If true, validate the set token for being a user auth token and having the
-                        required scope. Defaults to `True`.
+                        token (str): The generated user token.
+                        scope (list[OAuthScope]): List of Authorization Scopes that the given user token has.\n
+                                Has to be provided if `auto_refresh_auth` is `True`.
+                        refresh_token (str | None, optional): The generated refresh token. Defaults to `None`.
+                        validate (bool, optional): If true, validate the set token for being a user auth token and having the
+                                required scope. Defaults to `True`.
 
                 Raises:
-                    ValueError: `refresh_token` must be provided if `auto_refresh_auth` is `True`.
-                    ValueError: If given token is missing one of the required scopes.
+                        ValueError: `refresh_token` must be provided if `auto_refresh_auth` is `True`.
+                        ValueError: If given token is missing one of the required scopes.
                 """
                 if refresh_token is None and self.auto_refresh_auth:
                         raise ValueError("refresh_token must be provided if auto_refresh_auth is True")
@@ -786,12 +787,12 @@ class Kick:
                 For detailed documentation, see here: https://docs.kick.com/apis/categories#get-categories
 
                 Args:
-                    query (str): Search query.
-                    page (int, optional): Page. Defaults to `1`.\n
-                        **Dev note: The library already handles pagination on its own.**
+                        query (str): Search query.
+                        page (int, optional): Page. Defaults to `1`.\n
+                                **Dev note: The library already handles pagination on its own.**
 
                 Raises:
-                    ValueError: `page` must be greater than 0.
+                        ValueError: `page` must be greater than 0.
                 """
                 if page < 1:
                         raise ValueError("'page' must be int >= 1")
@@ -814,7 +815,7 @@ class Kick:
                 For detailed documentation, see here: https://docs.kick.com/apis/categories#get-categories-category_id
 
                 Args:
-                    category_id (int | str): Category ID.
+                        category_id (int | str): Category ID.
                 """
                 return await self._build_result(
                         "GET",
@@ -834,7 +835,7 @@ class Kick:
                 For detailed documentation, see here: https://docs.kick.com/apis/users#post-token-introspect
 
                 Args:
-                    token (str): Token to introspect.
+                        token (str): Token to introspect.
                 """
                 return await self._build_result(
                         "POST",
@@ -852,8 +853,8 @@ class Kick:
                 For detailed documentation, see here: https://docs.kick.com/apis/users#get-users
 
                 Args:
-                    user_id (int | list[int] | None, optional): User IDs. Defaults to `None`.\n
-                        If no user IDs are specified, returns the information for the currently authorized user.
+                        user_id (int | list[int] | None, optional): User IDs. Defaults to `None`.\n
+                                If no user IDs are specified, returns the information for the currently authorized user.
                 """
                 # _id = [user_id] if isinstance(user_id, int) else user_id
                 params = {"id": user_id}
@@ -876,21 +877,21 @@ class Kick:
                 """Retrieve channel information based on provided broadcaster user IDs or channel slugs.
 
                 Note:
-                    If none of the parameters are provided, returns the information for the currently authenticated user.
+                        If none of the parameters are provided, returns the information for the currently authenticated user.
 
                 For detailed documentation, see here: https://docs.kick.com/apis/channels#get-channels
 
                 Args:
-                    broadcaster_user_id (int | list[int] | None, optional): Broadcaster User IDs. Defaults to `None`.\n
-                        Note: cannot be used with `slug`.
-                    slug (str | list[str] | None, optional): Channel slugs. Defaults to `None`.\n
-                        Note: cannot be used with `broadcaster_user_id`.
+                        broadcaster_user_id (int | list[int] | None, optional): Broadcaster User IDs. Defaults to `None`.\n
+                                Note: cannot be used with `slug`.
+                        slug (str | list[str] | None, optional): Channel slugs. Defaults to `None`.\n
+                                Note: cannot be used with `broadcaster_user_id`.
 
                 Raises:
-                    ValueError: `broadcaster_user_id` must be max 50 entries.
-                    ValueError: `slug` must be max 50 entries.
-                    ValueError: Each `slug` must be max 25 characters.
-                    ValueError: Cannot provide both `broadcaster_user_id` and `slug` at the same time.
+                        ValueError: `broadcaster_user_id` must be max 50 entries.
+                        ValueError: `slug` must be max 50 entries.
+                        ValueError: Each `slug` must be max 25 characters.
+                        ValueError: Cannot provide both `broadcaster_user_id` and `slug` at the same time.
                 """
                 _user_id = [broadcaster_user_id] if isinstance(broadcaster_user_id, int) else broadcaster_user_id
                 if _user_id and len(_user_id) > 50:
@@ -930,9 +931,9 @@ class Kick:
                 For detailed documentation, see here: https://docs.kick.com/apis/channels#patch-channels
 
                 Args:
-                    category_id (int | None, optional): Category ID. Defaults to `None`.
-                    custom_tags (list[str] | None, optional): Custom Tags. Defaults to `None`.
-                    stream_title (str | None, optional): Stream Title. Defaults to `None`.
+                        category_id (int | None, optional): Category ID. Defaults to `None`.
+                        custom_tags (list[str] | None, optional): Custom Tags. Defaults to `None`.
+                        stream_title (str | None, optional): Stream Title. Defaults to `None`.
                 """
                 body = {"category_id": category_id, "custom_tags": custom_tags, "stream_title": stream_title}
                 return (
@@ -959,24 +960,24 @@ class Kick:
                 """Post a chat message to a channel as a user or a bot.
 
                 Note:
-                    The channel where the message will be posted is the same as the currently authenticated user.
-                    In other words, the one linked to the token.
+                        The channel where the message will be posted is the same as the currently authenticated user.
+                        In other words, the one linked to the token.
 
                 For detailed documentation, see here: https://docs.kick.com/apis/chat#post-chat
 
                 Args:
-                    content (str): Message content
-                    msg_type (Literal[&quot;user&quot;, &quot;bot&quot;], optional): Defaults to "bot".\n
-                        When sending as a `user`, the `broadcaster_user_id` is required.\n
-                        Whereas when sending as a `bot`, the `broadcaster_user_id` is not required and is ignored.\n
-                        As a `bot`, the message will always be sent to the channel attached to your token.
-                    broadcaster_user_id (int | None, optional): Broadcaster user ID. Defaults to `None`.\n
-                        **Dev note: At the moment, the API only supports the linked to the actual token.**
-                    reply_to_message_id (str | None, optional): Message ID to reply. Defaults to `None`.
+                        content (str): Message content
+                        msg_type (Literal[&quot;user&quot;, &quot;bot&quot;], optional): Defaults to "bot".\n
+                                When sending as a `user`, the `broadcaster_user_id` is required.\n
+                                Whereas when sending as a `bot`, the `broadcaster_user_id` is not required and is ignored.\n
+                                As a `bot`, the message will always be sent to the channel attached to your token.
+                        broadcaster_user_id (int | None, optional): Broadcaster user ID. Defaults to `None`.\n
+                                **Dev note: At the moment, the API only supports the linked to the actual token.**
+                        reply_to_message_id (str | None, optional): Message ID to reply. Defaults to `None`.
 
                 Raises:
-                    ValueError: `content` must be max 500 characters.
-                    ValueError: to send a message as 'user' you must provide a `broadcaster_user_id`.
+                        ValueError: `content` must be max 500 characters.
+                        ValueError: to send a message as 'user' you must provide a `broadcaster_user_id`.
                 """
                 if len(content) > 500:
                         raise ValueError("'content' must be max 500 characters")
@@ -1012,16 +1013,16 @@ class Kick:
                 For detailed documentation, see here: https://docs.kick.com/apis/moderation#post-moderation-bans
 
                 Args:
-                    user_id (int): User ID of the user that will be banned/timed out.
-                    broadcaster_user_id (int): Broadcaster User ID of the broadcaster's chat room.\n
-                        **Dev note: At the moment, the API only supports the linked to the actual token.**
-                    duration (int | None, optional): Timeout period in minutes. Defaults to `None`.\n
-                        To ban a user, don't include this field.
-                    reason (str | None, optional): Ban/timeout reason. Defaults to `None`.
+                        user_id (int): User ID of the user that will be banned/timed out.
+                        broadcaster_user_id (int): Broadcaster User ID of the broadcaster's chat room.\n
+                                **Dev note: At the moment, the API only supports the linked to the actual token.**
+                        duration (int | None, optional): Timeout period in minutes. Defaults to `None`.\n
+                                To ban a user, don't include this field.
+                        reason (str | None, optional): Ban/timeout reason. Defaults to `None`.
 
                 Raises:
-                    ValueError: `duration` must be between 1 and 10080.
-                    ValueError: `reason` must be max 100 characters.
+                        ValueError: `duration` must be between 1 and 10080.
+                        ValueError: `reason` must be max 100 characters.
                 """
                 if duration and not (0 < duration < 10081):
                         raise ValueError("'duration' must be between 1 and 10080")
@@ -1056,9 +1057,9 @@ class Kick:
                 For detailed documentation, see here: https://docs.kick.com/apis/moderation#delete-moderation-bans
 
                 Args:
-                    user_id (int): User ID of the user that will be unbanned or removed the timeout.
-                    broadcaster_user_id (int): Broadcaster User ID of the broadcaster's chat room.\n
-                        **Dev note: At the moment, the API only supports the linked to the actual token.**
+                        user_id (int): User ID of the user that will be unbanned or removed the timeout.
+                        broadcaster_user_id (int): Broadcaster User ID of the broadcaster's chat room.\n
+                                **Dev note: At the moment, the API only supports the linked to the actual token.**
                 """
                 body = {"broadcaster_user_id": broadcaster_user_id, "user_id": user_id}
                 return await self._build_result(
@@ -1085,16 +1086,16 @@ class Kick:
                 For detailed documentation, see here: https://docs.kick.com/apis/livestreams#get-livestreams
 
                 Args:
-                    broadcaster_user_id (int | list[int] | None, optional): Broadcaster User IDs. Defaults to `None`.
-                    category_id (int | None, optional): Category ID. Defaults to `None`.
-                    language (str | None, optional): Language of the livestream. Defaults to `None`.
-                    limit (int | None, optional): Limit the number of results. Defaults to `None`.
-                    sort (Literal[&quot;viewer_count&quot;, &quot;started_at&quot;] | None, optional): Sort by `viewer_count`
-                        or `started_at`. Defaults to `None`.
+                        broadcaster_user_id (int | list[int] | None, optional): Broadcaster User IDs. Defaults to `None`.
+                        category_id (int | None, optional): Category ID. Defaults to `None`.
+                        language (str | None, optional): Language of the livestream. Defaults to `None`.
+                        limit (int | None, optional): Limit the number of results. Defaults to `None`.
+                        sort (Literal[&quot;viewer_count&quot;, &quot;started_at&quot;] | None, optional): Sort by
+                                `viewer_count` or `started_at`. Defaults to `None`.
 
                 Raises:
-                    ValueError: `broadcaster_user_id` must be max 50 entries.
-                    ValueError: `limit` must be between 1 and 100.
+                        ValueError: `broadcaster_user_id` must be max 50 entries.
+                        ValueError: `limit` must be between 1 and 100.
                 """
                 _user_id = [broadcaster_user_id] if isinstance(broadcaster_user_id, int) else broadcaster_user_id
                 if _user_id and len(_user_id) > 50:
@@ -1152,8 +1153,8 @@ class Kick:
                 For detailed documentation, see here: https://docs.kick.com/events/subscribe-to-events#get-events-subscriptions
 
                 Args:
-                    force_app_auth (bool): If true, app auth will be used. Otherwise, user auth will be used if available.
-                        Defaults to `False`.
+                        force_app_auth (bool): If true, app auth will be used. Otherwise, user auth will be used if
+                                available. Defaults to `False`.
                 """
                 return await self._build_result(
                         "GET",
@@ -1177,16 +1178,16 @@ class Kick:
                 For detailed documentation, see here: https://docs.kick.com/events/subscribe-to-events#post-events-subscriptions
 
                 ## Note:
-                    **If user authentication is set, Kick API will override `broadcaster_user_id` with the
-                    one linked to the user token. If you want to subscribe to multiple broadcasters, you should set
-                    `force_app_auth` to `True`.**
+                        **If user authentication is set, Kick API will override `broadcaster_user_id` with the
+                        one linked to the user token. If you want to subscribe to multiple broadcasters, you should set
+                        `force_app_auth` to `True`.**
 
                 Args:
-                    events (list[WebhookEvents]): List of events to subscribe.
-                    broadcaster_user_id (int | None, optional): Broadcaster User ID. Defaults to `None`.
-                    method (Literal[&quot;webhook&quot;]): Possible values: `webhook`. Defaults to `webhook`.
-                    force_app_auth (bool): If true, app auth will be used. Otherwise, user auth will be used if available.
-                        Defaults to `False`.
+                        events (list[WebhookEvents]): List of events to subscribe.
+                        broadcaster_user_id (int | None, optional): Broadcaster User ID. Defaults to `None`.
+                        method (Literal[&quot;webhook&quot;]): Possible values: `webhook`. Defaults to `webhook`.
+                        force_app_auth (bool): If true, app auth will be used. Otherwise, user auth will be used if
+                                available. Defaults to `False`.
                 """
                 body = {
                         "broadcaster_user_id": broadcaster_user_id,
@@ -1214,17 +1215,17 @@ class Kick:
                 For detailed documentation, see here: https://docs.kick.com/events/subscribe-to-events#delete-events-subscriptions
 
                 ## Note:
-                    **If user authentication is set, Kick API will override `broadcaster_user_id` with the
-                    one linked to the user token. If you want to unsubscribe from multiple broadcasters, you should set
-                    `force_app_auth` to `True`.**
+                        **If user authentication is set, Kick API will override `broadcaster_user_id` with the
+                        one linked to the user token. If you want to unsubscribe from multiple broadcasters, you should set
+                        `force_app_auth` to `True`.**
 
                 Args:
-                    event_id (list[str]): Event Subscription IDs.
-                    force_app_auth (bool): If true, app auth will be used. Otherwise, user auth will be used if available.
-                        Defaults to `False`.
+                        event_id (list[str]): Event Subscription IDs.
+                        force_app_auth (bool): If true, app auth will be used. Otherwise, user auth will be used if
+                                available. Defaults to `False`.
 
                 Raises:
-                    ValueError: `event_id` can't be an empty list.
+                        ValueError: `event_id` can't be an empty list.
                 """
                 if not len(event_id):
                         raise ValueError("event_id can't be an empty list")

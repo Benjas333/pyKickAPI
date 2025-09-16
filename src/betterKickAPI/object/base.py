@@ -18,8 +18,8 @@ import httpx
 import orjson as json
 from pydantic import BaseModel, ConfigDict, Field, RootModel, dataclasses
 
-from kick_api import helper
-from kick_api.types import OAuthScope, OAuthType
+from betterKickAPI import helper
+from betterKickAPI.types import OAuthScope, OAuthType
 
 T = TypeVar("T")
 

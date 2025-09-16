@@ -10,13 +10,13 @@ from typing import TYPE_CHECKING, Any
 import socketify
 from pydantic import ValidationError
 
-from kick_api.object.eventsub import WebhookVerificationHeaders
+from betterKickAPI.object.eventsub import WebhookVerificationHeaders
 
 if TYPE_CHECKING:
         import multiprocessing
         from multiprocessing import managers, synchronize
 
-        from kick_api.helper import SSLOptions
+        from betterKickAPI.helper import SSLOptions
 
 __all__ = ["AuthServer", "WebhookServer"]
 html = bytes

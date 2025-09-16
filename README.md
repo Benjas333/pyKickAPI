@@ -5,19 +5,21 @@ A full implementation of the Kick API and EventSub in Python 3.9+.
 Heavily inspired on [pyTwitchAPI](https://github.com/Teekeks/pyTwitchAPI). My mission is to maintain parity with the twitchAPI library for an easier manipulation of both libraries in any project.
 
 > [!NOTE]
-> The library was intended to be called kickAPI to have parity with twitchAPI, but the name is already taken. So the library was re-branded to kick_api.
+> The library was intended to be called `kickAPI` to have parity with `twitchAPI`, but the name is already taken. So the library was re-branded to `kick_api`.
+> Update:
+> PyPI didn't like `kick_api`, a friend of mine recommended me `betterKickAPI`, and I liked it. So, re-branded to `betterKickAPI`.
 
 ## Installation
 
 Install using pip:
 
 ```
-pip install kick_api
+pip install betterKickAPI
 ```
 
 Install using uv:
 ```
-uv add kick_api
+uv add betterKickAPI
 ```
 
 <!-- ## Documentation
@@ -31,8 +33,8 @@ A full API documentation can be found on readthedocs.org. -->
 Setting up an instance of the Kick API and get your User ID.
 
 ```python
-from kick_api.kick import Kick
-from kick_api.helper import first
+from betterKickAPI.kick import Kick
+from betterKickAPI.helper import first
 import asyncio
 
 async def kick_example():
@@ -57,7 +59,7 @@ The Kick API knows 2 different authentications. App and User Authentication. Whi
 ###  App Authentication
 
 ```python
-from kick_api.kick import Kick
+from betterKickAPI.kick import Kick
 kick = await Kick(APP_ID, APP_SECRET)
 ```
 
@@ -66,9 +68,9 @@ kick = await Kick(APP_ID, APP_SECRET)
 To get a user auth token, the user has to explicitly click "Allow access" on the Kick website. The library includes an Authenticator. Just remember to add `http://localhost:36571` in your redirect URIs in the [dev settings tab](https://kick.com/settings/developer).
 
 ```python
-from kick_api.kick import Kick
-from kick_api.oauth import UserAuthenticator
-from kick_api.type import OAuthScope
+from betterKickAPI.kick import Kick
+from betterKickAPI.oauth import UserAuthenticator
+from betterKickAPI.type import OAuthScope
 
 kick = await Kick(APP_ID, APP_SECRET)
 
@@ -82,7 +84,7 @@ await kick.set_user_authentication(token, target_scope, refresh_token)
 
 You can reuse this token and use the refresh_token to renew it:
 ```python
-from kick_api.oauth import refresh_access_token
+from betterKickAPI.oauth import refresh_access_token
 new_token, new_refresh_token = await refresh_access_token(refresh_token, APP_ID, APP_SECRET)
 ```
 
@@ -91,7 +93,7 @@ new_token, new_refresh_token = await refresh_access_token(refresh_token, APP_ID,
 Optionally you can set a callback for both user access token refresh and app access token refresh.
 
 ```python
-from kick_api.kick import Kick
+from betterKickAPI.kick import Kick
 
 async def app_refresh(token: str):
         print(f'my new ap token is:{token}')
@@ -112,6 +114,11 @@ The EventSub client runs in its own process, calling the given callback function
 
 > [!IMPORTANT]
 > At the moment, the Kick API offers Webhook as the only method to use EventSub. But there's already plans on adding WebSockets.
+
+## TODO
+
+- Add documentation.
+- Add EventSub WebSockets when available.
 
 ## Acknowledges
 
