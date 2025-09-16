@@ -1,6 +1,6 @@
 [project]
 name = "betterKickAPI"
-version = "0.1.1"
+version = "0.1.2"
 description = "A Python 3.9+ implementation of the Kick API and Webhook. Highly inspired on twitchAPI"
 readme = "README.md"
 authors = [
@@ -40,12 +40,20 @@ Issues = "https://github.com/Benjas333/pyKickAPI/issues"
 Changelog = "https://github.com/Benjas333/pyKickAPI/blob/master/CHANGELOG.md"
 
 [build-system]
-requires = ["uv_build>=0.8.11,<0.9.0"]
-build-backend = "uv_build"
+# requires = ["uv_build>=0.8.11,<0.9.0"]
+# build-backend = "uv_build"
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
 
-[tool.uv.build-backend]
-module-root = "src"
-module-name = "betterKickAPI"
+# [tool.uv.build-backend]
+# module-root = "src"
+# module-name = "betterKickAPI"
+
+[tool.setuptools.packages.find]
+where = ['src']
+
+[tool.setuptools.package-data]
+betterKickAPI = ['py.typed']
 
 [tool.pytest.ini_options]
 addopts = "-v --cov=betterKickAPI --cov-report=term-missing --html=src/tests/reports/report.html --self-contained-html"
