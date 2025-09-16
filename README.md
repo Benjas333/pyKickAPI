@@ -6,7 +6,8 @@ Heavily inspired on [pyTwitchAPI](https://github.com/Teekeks/pyTwitchAPI). My mi
 
 > [!NOTE]
 > The library was intended to be called `kickAPI` to have parity with `twitchAPI`, but the name is already taken. So the library was re-branded to `kick_api`.
-> Update:
+>
+> Update:\
 > PyPI didn't like `kick_api`, a friend of mine recommended me `betterKickAPI`, and I liked it. So, re-branded to `betterKickAPI`.
 
 ## Installation
