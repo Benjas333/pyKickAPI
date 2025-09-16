@@ -62,6 +62,53 @@ wheels = [
 ]
 
 [[package]]
+name = "betterkickapi"
+version = "0.1.1"
+source = { editable = "." }
+dependencies = [
+    { name = "aiofiles" },
+    { name = "cryptography" },
+    { name = "enum-tools" },
+    { name = "httpx" },
+    { name = "orjson" },
+    { name = "pydantic" },
+    { name = "socketify" },
+    { name = "strenum" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pylint" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "pytest-html" },
+    { name = "python-dotenv" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiofiles", specifier = ">=24.1.0" },
+    { name = "cryptography", specifier = ">=45.0.7" },
+    { name = "enum-tools", specifier = ">=0.13.0" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "orjson", specifier = ">=3.11.3" },
+    { name = "pydantic", specifier = ">=2.11.9" },
+    { name = "socketify", specifier = ">=0.0.31" },
+    { name = "strenum", specifier = ">=0.4.15" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pylint", specifier = ">=3.3.8" },
+    { name = "pytest", specifier = ">=8.4.2" },
+    { name = "pytest-asyncio", specifier = ">=1.2.0" },
+    { name = "pytest-cov", specifier = ">=7.0.0" },
+    { name = "pytest-html", specifier = ">=4.1.1" },
+    { name = "python-dotenv", specifier = ">=1.1.1" },
+]
+
+[[package]]
 name = "certifi"
 version = "2025.8.3"
 source = { registry = "https://pypi.org/simple" }
@@ -428,53 +475,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/df/bf/f7da0350254c0ed7c72f3e33cef02e048281fec7ecec5f032d4aac52226b/jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d", size = 245115, upload-time = "2025-03-05T20:05:02.478Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67", size = 134899, upload-time = "2025-03-05T20:05:00.369Z" },
-]
-
-[[package]]
-name = "kickapi"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "aiofiles" },
-    { name = "cryptography" },
-    { name = "enum-tools" },
-    { name = "httpx" },
-    { name = "orjson" },
-    { name = "pydantic" },
-    { name = "socketify" },
-    { name = "strenum" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pylint" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "pytest-html" },
-    { name = "python-dotenv" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiofiles", specifier = ">=24.1.0" },
-    { name = "cryptography", specifier = ">=45.0.7" },
-    { name = "enum-tools", specifier = ">=0.13.0" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "orjson", specifier = ">=3.11.3" },
-    { name = "pydantic", specifier = ">=2.11.9" },
-    { name = "socketify", specifier = ">=0.0.31" },
-    { name = "strenum", specifier = ">=0.4.15" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pylint", specifier = ">=3.3.8" },
-    { name = "pytest", specifier = ">=8.4.2" },
-    { name = "pytest-asyncio", specifier = ">=1.2.0" },
-    { name = "pytest-cov", specifier = ">=7.0.0" },
-    { name = "pytest-html", specifier = ">=4.1.1" },
-    { name = "python-dotenv", specifier = ">=1.1.1" },
 ]
 
 [[package]]
