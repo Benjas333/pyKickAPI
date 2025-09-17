@@ -5,15 +5,16 @@ import multiprocessing
 from collections import deque
 from collections.abc import Awaitable
 from dataclasses import dataclass
-from json import JSONDecodeError
 from logging import getLogger
+from logging.handlers import QueueListener
 from multiprocessing import managers, synchronize
 from queue import Empty
 from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar, Union
 
 import orjson as json
-from pydantic import ValidationError
+from pydantic import AliasChoices, AliasGenerator, ConfigDict, ValidationError, dataclasses
 
+from betterKickAPI.constants import ServerStatus
 from betterKickAPI.eventsub import utils
 from betterKickAPI.eventsub.events import (
         ChannelFollowEvent,
@@ -26,8 +27,7 @@ from betterKickAPI.eventsub.events import (
         ModerationBannedEvent,
         _CommonEventResponse,
 )
-from betterKickAPI.helper import ServerStatus, SSLOptions
-from betterKickAPI.object.eventsub import WebhookVerificationHeaders
+from betterKickAPI.object.base import KickObject
 from betterKickAPI.servers import WebhookServer
 from betterKickAPI.types import (
         EventSubSubscriptionError,
@@ -38,7 +38,7 @@ from betterKickAPI.types import (
 if TYPE_CHECKING:
         from betterKickAPI.kick import Kick
 
-__all__ = ["KickWebhook", "SSLOptions"]
+__all__ = ["KickWebhook", "SSLOptions", "VerificationHeaders"]
 E = TypeVar("E", bound=_CommonEventResponse)
 EventCallback = Callable[[E], Union[Awaitable[None], None]]
 
@@ -62,6 +62,43 @@ class WebhookServerResponse:
 
         status: int = 200
         text: str = ""
+
+
+@dataclass
+class SSLOptions:
+        key_file_name: str | None = None
+        cert_file_name: str | None = None
+        passphrase: str | None = None
+        dh_params_file_name: str | None = None
+        ca_file_name: str | None = None
+        ssl_ciphers: str | None = None
+        ssl_prefer_low_memory_usage: int = 0
+
+
+def _parse_header_style(key: str) -> str:
+        return key.title().replace("_", "-")
+
+
+def _validation_alias(field_name: str) -> AliasChoices:
+        title = _parse_header_style(field_name)
+        return AliasChoices(title, title.lower(), field_name.title(), field_name)
+
+
+@dataclasses.dataclass(
+        config=ConfigDict(
+                serialize_by_alias=True,
+                validate_assignment=True,
+                extra="allow",
+                alias_generator=AliasGenerator(validation_alias=_validation_alias, serialization_alias=_parse_header_style),
+        )
+)
+class VerificationHeaders(KickObject):
+        kick_event_message_id: str | None = None
+        kick_event_subscription_id: str | None = None
+        kick_event_signature: str | None = None
+        kick_event_message_timestamp: str | None = None
+        kick_event_type: str | None = None
+        kick_event_version: str | None = None
 
 
 class KickWebhook:
@@ -100,12 +137,13 @@ class KickWebhook:
                         msg_id_history_max_length (int, optional): The amount of messages being considered for the duplicate
                                 message deduplication. Defaults to `50`.
                 """
-                self.logger = getLogger("kickAPI.webhook.KickWebhook")
+                self.logger = getLogger("kickAPI.eventsub.webhook")
                 self._kick = kick
 
                 self._public_key_pem = public_key_pem
                 self._auto_fetch_public_key = auto_fetch_public_key
-                self._force_app_auth = force_app_auth
+                self.force_app_auth = force_app_auth
+                """Use App Auth in all the EventSub related endpoints."""
 
                 self._status = ServerStatus.CLOSED
 
@@ -121,6 +159,8 @@ class KickWebhook:
                 self._request_queue = multiprocessing.Queue()
                 self._manager: managers.SyncManager = multiprocessing.Manager()
                 self._responses: managers.DictProxy[Any, Any] = self._manager.dict()
+                self._logger_queue = multiprocessing.Queue()
+                self._logger_listener = QueueListener(self._logger_queue, *getLogger().handlers)
 
                 # self.__hook_loop =
                 # self._task_callback = partial(done_task_callback, self.logger)
@@ -132,6 +172,7 @@ class KickWebhook:
 
                 self._background_tasks: set[asyncio.Task[bool]] = set()
                 self._response_loop_task: asyncio.Task[None] | None = None
+                self._shutdown_cmd = "SHUTDOWN-SERVER"
 
         async def get_public_key(self) -> str:
                 if self._public_key_pem:
@@ -146,7 +187,7 @@ class KickWebhook:
 
         async def _response_loop(self) -> None:
                 try:
-                        while self._status not in (ServerStatus.CLOSED, ServerStatus.CLOSING):
+                        while True:
                                 try:
                                         item = await asyncio.get_running_loop().run_in_executor(
                                                 None,
@@ -163,14 +204,17 @@ class KickWebhook:
                                 if not item:
                                         continue
 
-                                message_id, data_bytes, headers_dict = item
-                                if not isinstance(data_bytes, bytes) or not isinstance(headers_dict, dict):
-                                        self.logger.warning("Invalid data types in data or headers.")
+                                message_id, data, headers = item
+                                if message_id == self._shutdown_cmd:
+                                        break
+                                if not isinstance(data, bytes) or not isinstance(headers, dict):
+                                        msg = "Invalid data types from data or headers."
+                                        self.logger.warning(msg)
+                                        self._responses[message_id] = {"status": 400, "text": msg}
                                         continue
-                                headers = WebhookVerificationHeaders(**headers_dict)
 
                                 try:
-                                        response_obj = await self.handle_incoming(data_bytes, headers)
+                                        response_obj = await self.handle_incoming(data, headers)
                                         response = {"status": response_obj.status, "text": response_obj.text}
                                 except Exception as e:
                                         self.logger.exception("handle_incoming raised an exception for id %s", message_id)
@@ -180,7 +224,7 @@ class KickWebhook:
                 finally:
                         try:
                                 while not self._request_queue.empty():
-                                        message_id, data_bytes, headers_dict = self._request_queue.get_nowait()
+                                        message_id = self._request_queue.get_nowait()[0]
                                         self._responses[message_id] = {"status": 503, "text": "Server shutting down"}
                         except Empty:
                                 pass
@@ -209,11 +253,14 @@ class KickWebhook:
                         return
 
                 self._status = ServerStatus.OPENING
+                self._response_loop_task = asyncio.create_task(self._response_loop())
+                self._logger_listener.start()
                 self.__process = multiprocessing.Process(
                         target=WebhookServer,
                         args=(
                                 port,
                                 host_binding,
+                                self._logger_queue,
                                 self._request_queue,
                                 self._responses,
                                 self.__stop_event,
@@ -224,7 +271,6 @@ class KickWebhook:
                 self.__process.start()
 
                 self._status = ServerStatus.OPENED
-                self._response_loop_task = asyncio.create_task(self._response_loop())
 
         async def stop(self) -> None:
                 """Stops the EventSub client.
@@ -241,21 +287,20 @@ class KickWebhook:
                 self._status = ServerStatus.CLOSING
                 self.logger.debug("Shutting down Webhook")
 
-                async with self._lock:
-                        await asyncio.gather(*self._background_tasks)
-
-                if self._response_loop_task is not None:
-                        self._response_loop_task.cancel()
-                        try:
-                                await self._response_loop_task
-                        except asyncio.CancelledError:
-                                pass
-                        self._response_loop_task = None
-
                 if self.unsubscribe_on_stop:
                         await self.unsubscribe_all_local_knowns()
 
+                self._request_queue.put_nowait((self._shutdown_cmd, None, None))
+
+                if self._response_loop_task is not None:
+                        await self._response_loop_task
+                        self._response_loop_task = None
+
+                async with self._lock:
+                        await asyncio.gather(*self._background_tasks)
+
                 await asyncio.sleep(0.25)
+
                 self.__stop_event.set()
                 self.__process.join(5.0)
                 if self.__process.is_alive():
@@ -263,6 +308,8 @@ class KickWebhook:
                         # self.__process.terminate()
                         self.__process.kill()
                         self.__process.join()
+
+                self._logger_listener.stop()
 
                 self._status = ServerStatus.CLOSED
                 self.logger.debug("Webhook shut down")
@@ -293,7 +340,7 @@ class KickWebhook:
                         [event],
                         broadcaster_user_id,
                         "webhook",
-                        force_app_auth=self._force_app_auth,
+                        force_app_auth=self.force_app_auth,
                 )
                 subscription = event_subs[0]
                 if subscription.error:
@@ -320,7 +367,7 @@ class KickWebhook:
                         bool: `True` if it was successful, otherwise `False`.
                 """
                 try:
-                        await self._kick.delete_events_subscriptions([subscription_id], force_app_auth=self._force_app_auth)
+                        await self._kick.delete_events_subscriptions([subscription_id], force_app_auth=self.force_app_auth)
                         self._handlers.pop(subscription_id)
                         # return await self._unsubscribe_hook(subscription_id)
                         return True
@@ -330,13 +377,13 @@ class KickWebhook:
 
         async def unsubscribe_all(self) -> None:
                 """Unsubscribe from all subscriptions."""
-                subs = await self._kick.get_events_subscriptions(force_app_auth=self._force_app_auth)
+                subs = await self._kick.get_events_subscriptions(force_app_auth=self.force_app_auth)
                 if not len(subs):
                         return
                 try:
                         await self._kick.delete_events_subscriptions(
                                 [event_sub.id for event_sub in subs],
-                                force_app_auth=self._force_app_auth,
+                                force_app_auth=self.force_app_auth,
                         )
                 except KickAPIException as e:
                         self.logger.warning("Failed to unsubscribe from events: %s", e, exc_info=e)
@@ -348,31 +395,45 @@ class KickWebhook:
                 try:
                         await self._kick.delete_events_subscriptions(
                                 [sub.sub_id for sub in self._handlers.values()],
-                                force_app_auth=self._force_app_auth,
+                                force_app_auth=self.force_app_auth,
                         )
                 except KickAPIException as e:
                         self.logger.warning("Failed to unsubscribe from local events: %s", e, exc_info=e)
-                self._handlers.clear()
 
-        async def handle_incoming(self, data: bytes, headers: WebhookVerificationHeaders) -> WebhookServerResponse:
-                """Public endpoint handler. In case you don't want to use the internal server.
+        async def handle_incoming(  # noqa: C901
+                self,
+                data: bytes,
+                headers: dict | VerificationHeaders,
+        ) -> WebhookServerResponse:
+                """Public endpoint handler. In case you don't want to run the internal server from the library.
 
                 Args:
                         data (bytes): The request data in bytes.
-                        headers (WebhookVerificationHeaders): A helper class to parse the headers.
+                        headers (dict | VerificationHeaders): Either the raw headers dict or an instance of the
+                                `VerificationHeaders` helper class.
 
                 Returns:
                         WebhookServerResponse: A simple dataclass with `status` and `text` attributes.
                 """
                 resp = WebhookServerResponse()
 
-                message_id = headers.kick_event_message_id
-                signature = headers.kick_event_signature
-                timestamp = headers.kick_event_message_timestamp
-                # event_type = headers.kick_event_type
-                subscription_id = headers.kick_event_subscription_id
+                if not isinstance(headers, VerificationHeaders):
+                        try:
+                                headers_obj = VerificationHeaders(**headers)
+                        except ValidationError as e:
+                                resp.status = 400
+                                resp.text = f"Validation error: {e}"
+                                self.logger.warning(resp.text, exc_info=e)
+                                return resp
+                else:
+                        headers_obj = headers
 
-                if not (message_id and timestamp and subscription_id and signature):
+                message_id = headers_obj.kick_event_message_id
+                subscription_id = headers_obj.kick_event_subscription_id
+                timestamp = headers_obj.kick_event_message_timestamp
+                signature = headers_obj.kick_event_signature
+
+                if not (message_id and subscription_id and timestamp and signature):
                         resp.status = 400
                         resp.text = "Missing required headers"
                         return resp
@@ -391,9 +452,10 @@ class KickWebhook:
 
                 handler = self._handlers.get(subscription_id)
                 if not handler:
-                        resp.text = f"No handlers for '{headers.kick_event_type}' event with id: {subscription_id}."
-                        if self.unsubscribe_on_handler_not_found:
+                        resp.text = f"No handlers for '{headers_obj.kick_event_type}' event with id: {subscription_id}."
+                        if self.unsubscribe_on_handler_not_found and self._status == ServerStatus.OPENED:
                                 resp.text = f"{resp.text} Unsubscribed."
+                                self.logger.warning(resp.text)
                                 task = asyncio.create_task(self.unsubscribe_event(subscription_id))
                                 self._background_tasks.add(task)
                                 task.add_done_callback(self._background_tasks.discard)
@@ -401,17 +463,16 @@ class KickWebhook:
 
                 try:
                         payload_obj = handler.response_type(**json.loads(data))
-                except (JSONDecodeError, ValidationError) as e:
+                except (json.JSONDecodeError, ValidationError) as e:
                         self.logger.warning("Payload parsing failed: %s", e, exc_info=e)
                         resp.status = 400
                         resp.text = f"Invalid payload: {e}"
                         return resp
 
-                callback = handler.callback
-                if asyncio.iscoroutinefunction(callback):
-                        task = asyncio.create_task(callback(payload_obj))
+                if asyncio.iscoroutinefunction(handler.callback):
+                        task = asyncio.create_task(handler.callback(payload_obj))
                         task.add_done_callback(
-                                lambda t: self.logger.warning("Callback failed: %s", t.exception(), exc_info=t.exception())
+                                lambda t: self.logger.exception("Callback failed: %s", t.exception(), exc_info=t.exception())
                                 if t.exception()
                                 else None
                         )
@@ -419,9 +480,9 @@ class KickWebhook:
 
                         def _call_sync() -> None:
                                 try:
-                                        callback(payload_obj)
-                                except Exception as e:  # noqa: BLE001
-                                        self.logger.warning("Sync callback failed: %s", e, exc_info=e)
+                                        handler.callback(payload_obj)
+                                except Exception as e:
+                                        self.logger.exception("Sync callback failed: %s", e)
 
                         asyncio.get_running_loop().run_in_executor(None, _call_sync)
 

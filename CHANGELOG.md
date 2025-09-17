@@ -13,12 +13,19 @@ and this project adheres to [Semantic Versioning].
 
 ### Added
 
-- Proper rate limit handler
+- Proper rate limit handler.
+- Webhook.handle_incoming() now supports headers as raw dict too.
+- Added 401 status_code error handling for token_validate.
 
 ### Changed
 
-- Improved object models
-- Improved status_code handling
+- Improved object models.
+- Improved status_code handling.
+- Improved Webhook shutting down.
+
+### Fixed
+
+- Socketify server loggers didn't worked.
 
 ## [0.1.0] - 2025-09-16
 

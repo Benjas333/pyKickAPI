@@ -8,6 +8,7 @@ import os
 import secrets
 import webbrowser
 from logging import getLogger
+from logging.handlers import QueueListener
 from pathlib import PurePath
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
@@ -16,10 +17,20 @@ import httpx
 import orjson as json
 
 from betterKickAPI import helper
-from betterKickAPI.constants import KICK_API_BASE_URL, KICK_AUTH_BASE_URL, Endpoints
+from betterKickAPI.constants import (
+        KICK_API_BASE_URL,
+        KICK_AUTH_BASE_URL,
+        Endpoints,
+        ServerStatus,
+)
 from betterKickAPI.object.api import TokenIntrospection
 from betterKickAPI.servers import AuthServer
-from betterKickAPI.types import InvalidRefreshTokenException, KickAPIException, MissingScopeException, OAuthScope
+from betterKickAPI.types import (
+        InvalidRefreshTokenException,
+        KickAPIException,
+        MissingScopeException,
+        OAuthScope,
+)
 
 if TYPE_CHECKING:
         from collections.abc import Awaitable
@@ -53,13 +64,13 @@ async def refresh_access_token(
         url = helper.clean_url(auth_base_url, Endpoints.Auth.TOKEN)
         ses = session if session is not None else httpx.AsyncClient()
         r = await ses.post(url, data=body, headers=headers)
-        r.raise_for_status()
         data = json.loads(r.content)
         await r.aclose()
         if session is None:
                 await ses.aclose()
         if "error" in data:
                 raise InvalidRefreshTokenException(data["error"])
+        r.raise_for_status()
         return data["access_token"], data["refresh_token"]
 
 
@@ -72,6 +83,9 @@ async def validate_token(
         url = helper.clean_url(auth_base_url, Endpoints.API.TOKEN_INTROSPECT)
         ses = session if session is not None else httpx.AsyncClient()
         r = await ses.post(url, headers=headers)
+        if r.status_code == 401:
+                await r.aclose()
+                return TokenIntrospection()
         r.raise_for_status()
         data = json.loads(r.content)
         await r.aclose()
@@ -183,7 +197,7 @@ class UserAuthenticator:
                 self.code_verifier = self._generate_code_verifier()
                 self.code_challenge = self._generate_code_challenge(self.code_verifier)
 
-                self._status = helper.ServerStatus.CLOSED
+                self._status = ServerStatus.CLOSED
                 self._auth_code: str | None = None
 
                 self._process: multiprocessing.Process | None = None
@@ -191,6 +205,8 @@ class UserAuthenticator:
                 self._auth_code_changed_event: synchronize.Event = multiprocessing.Event()
                 self._manager: managers.SyncManager = multiprocessing.Manager()
                 self._shared: managers.DictProxy[Any, Any] = self._manager.dict()
+                self._logger_queue = multiprocessing.Queue()
+                self._logger_listener = QueueListener(self._logger_queue, *getLogger().handlers)
 
         def _generate_code_verifier(self) -> str:
                 code_verifier = secrets.token_urlsafe(64)
@@ -215,14 +231,15 @@ class UserAuthenticator:
                 return helper.build_url(helper.clean_url(self.auth_base_url, Endpoints.Auth.AUTHORIZATION), params)
 
         async def _start(self) -> None:
-                if self._status != helper.ServerStatus.CLOSED:
+                if self._status != ServerStatus.CLOSED:
                         raise RuntimeError("Already started")
                 if self._process:
                         return
-                self._status = helper.ServerStatus.OPENING
+                self._status = ServerStatus.OPENING
                 # self._stop_event = multiprocessing.Event()
                 # self._manager = multiprocessing.Manager()
                 # self._shared = self._manager.dict()
+                self._logger_listener.start()
 
                 self._process = multiprocessing.Process(
                         target=AuthServer,
@@ -230,6 +247,7 @@ class UserAuthenticator:
                                 self.port,
                                 self.host,
                                 self.state,
+                                self._logger_queue,
                                 self._shared,
                                 self._stop_event,
                                 self._auth_code_changed_event,
@@ -237,14 +255,14 @@ class UserAuthenticator:
                         # daemon=True,
                 )
                 self._process.start()
-                self._status = helper.ServerStatus.OPENED
+                self._status = ServerStatus.OPENED
 
         def stop(self) -> None:
                 """Manually stop the webserver."""
                 if not self._process:
                         return
 
-                self._status = helper.ServerStatus.CLOSING
+                self._status = ServerStatus.CLOSING
                 self.logger.info("Shutting down OAuth WebServer")
                 self._stop_event.set()
                 self._process.join(5.0)
@@ -254,7 +272,8 @@ class UserAuthenticator:
                         self._process.kill()
                         self._process.join()
 
-                self._status = helper.ServerStatus.CLOSED
+                self._logger_listener.stop()
+                self._status = ServerStatus.CLOSED
                 self.logger.debug("OAuth WebServer shut down")
                 self._auth_code_changed_event.clear()
                 self._stop_event.clear()
@@ -405,7 +424,7 @@ class UserAuthenticationStorageHelper:
                 auth_base_url: str = KICK_AUTH_BASE_URL,
         ) -> None:
                 self.kick = kick
-                self.logger = getLogger("kickAPI.oauth.storage.helper")
+                self.logger = getLogger("kickAPI.oauth.storage_helper")
                 self._target_scopes = scopes
                 self.storage_path = storage_path or PurePath("user_token.json")
                 self.auth_generator = auth_generator_func or self._default_auth_gen
