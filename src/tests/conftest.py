@@ -26,7 +26,7 @@ class OnlyKickAPIFilter(Filter):
                 self.prefix = prefix
 
         def filter(self, record: LogRecord) -> bool | LogRecord:
-                return record.name.startswith(self.prefix) or record.name == 'root'
+                return record.name.startswith(self.prefix) or record.name == "root"
 
 
 @pytest.fixture(scope="session", autouse=True)

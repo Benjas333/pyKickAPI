@@ -40,12 +40,12 @@ import asyncio
 
 async def kick_example():
         # Initialize the kick instance, this will by default also create an app authentication for you
-        kick = await Kick(APP_ID, APP_SECRET)
+        kick = await Kick('APP_ID', 'APP_SECRET')
 
         # this returns an async generator that can be used to iterate over all results
         # but we are just interested in the first result
         # using the first helper makes this easy
-        user = await first(kick.get_users(slug='your_slug'))
+        user = await first(kick.get_users(slug='your_kick_user'))
         # print the ID of your user
         print(user.broadcaster_user_id)
 
@@ -61,7 +61,7 @@ The Kick API knows 2 different authentications. App and User Authentication. Whi
 
 ```python
 from betterKickAPI.kick import Kick
-kick = await Kick(APP_ID, APP_SECRET)
+kick = await Kick('APP_ID', 'APP_SECRET')
 ```
 
 ### User Authentication
@@ -73,12 +73,12 @@ from betterKickAPI.kick import Kick
 from betterKickAPI.oauth import UserAuthenticator
 from betterKickAPI.type import OAuthScope
 
-kick = await Kick(APP_ID, APP_SECRET)
+kick = await Kick('APP_ID', 'APP_SECRET')
 
 target_scope = [OAuthScope.CHANNEL_READ]
 auth = UserAuthenticator(kick, target_scope, force_verify=False)
 # this will open your default browser and prompt you with the kick auth website
-token refresh_token = await auth.authenticate()
+token, refresh_token = await auth.authenticate()
 
 await kick.set_user_authentication(token, target_scope, refresh_token)
 ```
@@ -86,7 +86,7 @@ await kick.set_user_authentication(token, target_scope, refresh_token)
 You can reuse this token and use the refresh_token to renew it:
 ```python
 from betterKickAPI.oauth import refresh_access_token
-new_token, new_refresh_token = await refresh_access_token(refresh_token, APP_ID, APP_SECRET)
+new_token, new_refresh_token = await refresh_access_token('refresh_token', 'APP_ID', 'APP_SECRET')
 ```
 
 ### AuthToken refresh callback
@@ -102,7 +102,7 @@ async def app_refresh(token: str):
 async def user_refresh(token: str, refresh_token: str):
         print(f'my new user token is: {token}')
 
-kick = await Kick(APP_ID, APP_SECRET)
+kick = await Kick('APP_ID', 'APP_SECRET')
 kick.app_auth_refresh_callback = app_refresh
 kick.user_auth_refresh_callback = user_refresh
 ```

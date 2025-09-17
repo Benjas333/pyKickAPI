@@ -242,12 +242,6 @@ async def test_public_key(kick_api: Kick, errors: list[Exception]):
         expect(public_key, str, errors)
 
 
-@pytest.mark.asyncio
-async def test_event_subscriptions(kick_api: Kick, errors: list[Exception]):
-        subscriptions = await kick_api.get_events_subscriptions()
-        expect(subscriptions, list[EventSubscription], errors)
-
-
 @pytest.mark.parametrize("query", CHANNEL_QUERIES)
 @pytest.mark.asyncio
 async def test_post_n_delete_event_subscription(kick_api: Kick, errors: list[Exception], query: str):
@@ -266,6 +260,11 @@ async def test_post_n_delete_event_subscription(kick_api: Kick, errors: list[Exc
         expect(subscription, PostEventSubscriptionResponse, errors)
         if not subscription.subscription_id:
                 pytest.fail("No 'subscription_id' returned")
+
+        subscriptions = await kick_api.get_events_subscriptions()
+        expect(subscriptions, list[EventSubscription], errors)
+        if not len(subscriptions):
+                pytest.fail("Empty events subscriptions list returned")
 
         ok = await kick_api.delete_events_subscriptions([subscription.subscription_id])
         expect(ok, bool, errors)

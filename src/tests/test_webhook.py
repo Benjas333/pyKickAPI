@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import warnings
+from logging import getLogger
 from typing import TYPE_CHECKING, Any, get_origin
 
 import pytest
@@ -23,8 +24,9 @@ from betterKickAPI.eventsub.webhook import KickWebhook
 if TYPE_CHECKING:
         from betterKickAPI.kick import Kick
 
-CHANNEL_QUERIES = ["ijenz", "imantado", "elglogloking"]
-timeout = 30.0 # in seconds
+FORCE_APP = True
+timeout = 60.0  # in seconds
+logger = getLogger("kickAPI.tests.test_webhook")
 
 
 def expect(data: Any, expected_type: Any):  # noqa: ANN401
@@ -41,97 +43,113 @@ def expect(data: Any, expected_type: Any):  # noqa: ANN401
 
 def sync_on_message(payload: ChatMessageEvent):
         expect(payload, ChatMessageEvent)
-        prefix = f"[{payload.broadcaster.channel_slug}]"
-        print(f"{prefix} {payload.sender.channel_slug}: {payload.content}")
+        logger.info("[%s] %s: %s", payload.broadcaster.channel_slug, payload.sender.channel_slug, payload.content)
 
 
 async def async_on_channel_follow(payload: ChannelFollowEvent):
         expect(payload, ChannelFollowEvent)
         await asyncio.sleep(5)  # example stuff
-        prefix = f"[{payload.broadcaster.channel_slug}]"
-        print(f"{prefix} {payload.follower.channel_slug} started following!")
+        logger.info("[%s] %s started following!", payload.broadcaster.channel_slug, payload.follower.channel_slug)
 
 
 def on_channel_subscription_renewal(payload: ChannelSubscriptionRenewalEvent):
         expect(payload, ChannelSubscriptionRenewalEvent)
-        prefix = f"[{payload.broadcaster.channel_slug}]"
-        print(f"{prefix} {payload.subscriber.channel_slug} subbed for {payload.duration} months!")
+        logger.info(
+                "[%s] %s subbed for %d months!",
+                payload.broadcaster.channel_slug,
+                payload.subscriber.channel_slug,
+                payload.duration,
+        )
         assert payload.duration > 1
 
 
 def on_channel_subscription_gifts(payload: ChannelSubscriptionGiftsEvent):
         expect(payload, ChannelSubscriptionGiftsEvent)
-        assert len(payload.giftees)
-        prefix = f"[{payload.broadcaster.channel_slug}]"
-        print(f"{prefix} {payload.gifter.channel_slug} gifted {len(payload.giftees)} sub(s)!")
+        length = len(payload.giftees)
+        assert length
+        logger.info("[%s] %s gifted %d sub(s)!", payload.broadcaster.channel_slug, payload.gifter.channel_slug, length)
         for gift in payload.giftees:
-                print(f"{prefix} {gift.channel_slug} got a gifted sub!")
+                logger.info("[%s] %s got a gifted sub!", payload.broadcaster.channel_slug, gift.channel_slug)
 
 
 def on_channel_subscription_new(payload: ChannelSubscriptionNewEvent):
         expect(payload, ChannelSubscriptionNewEvent)
-        prefix = f"[{payload.broadcaster.channel_slug}]"
-        print(f"{prefix} {payload.subscriber.channel_slug} has subscribed!")
+        logger.info("[%s] %s has subscribed!", payload.broadcaster.channel_slug, payload.subscriber.channel_slug)
         assert payload.duration < 2
 
 
 def on_livestream_status_updated(payload: LivestreamStatusUpdatedEvent):
         expect(payload, LivestreamStatusUpdatedEvent)
-        prefix = f"[{payload.broadcaster.channel_slug}]"
         text = "live" if payload.is_live else "offline"
-        print(f"{prefix} Broadcaster is now {text}")
+        logger.info("[%s] Broadcaster is now %s", payload.broadcaster.channel_slug, text)
         assert (payload.ended_at is None) if payload.is_live else (payload.ended_at is not None)
 
 
 def on_livestream_metadata_updated(payload: LivestreamMetadataUpdatedEvent):
         expect(payload, LivestreamMetadataUpdatedEvent)
-        prefix = f"[{payload.broadcaster.channel_slug}]"
-        print(f"{prefix} Changed metadata: {payload.metadata.model_dump_json(indent=2)}")
+        logger.info(
+                "[%s] Changed metadata: %s",
+                payload.broadcaster.channel_slug,
+                payload.metadata.model_dump_json(indent=2),
+        )
         assert payload.broadcaster.identity is None
 
 
 def on_moderation_ban(payload: ModerationBannedEvent):
         expect(payload, ModerationBannedEvent)
-        prefix = f"[{payload.broadcaster.channel_slug}]"
-        print(
-                f"{prefix} {payload.moderator.channel_slug} has banned {payload.banned_user.channel_slug}:\n"
-                f"    {payload.metadata.reason}\n"
-                f"    Until: {payload.metadata.expires_at}"
+        logger.info(
+                "[%s] %s has banned %s:\n    %s\n    Until: %s",
+                payload.broadcaster.channel_slug,
+                payload.moderator.channel_slug,
+                payload.banned_user.channel_slug,
+                payload.metadata.reason,
+                payload.metadata.expires_at,
         )
 
 
 @pytest.mark.asyncio
 async def test_webhook(kick_api: Kick):
         global timeout
-        webhook = KickWebhook(kick_api, force_app_auth=True)
+
+        webhook = KickWebhook(kick_api, force_app_auth=True if kick_api.user_auth_token is not None else FORCE_APP)
         await webhook.unsubscribe_all()
+        if kick_api.user_auth_token:
+                webhook.force_app_auth = False
+                await webhook.unsubscribe_all()
+                webhook.force_app_auth = FORCE_APP
         await webhook.start()
 
-        for channel_slug in CHANNEL_QUERIES:
-                channels = await kick_api.get_channels(slug=channel_slug)
-                if not len(channels):
-                        continue
-                channel = channels[0]
-                await webhook.listen_chat_message_sent(channel.broadcaster_user_id, sync_on_message)
-                await webhook.listen_channel_follow(channel.broadcaster_user_id, async_on_channel_follow)
-                await webhook.listen_channel_subscription_new(channel.broadcaster_user_id, on_channel_subscription_new)
-                await webhook.listen_channel_subscription_renewal(
-                        channel.broadcaster_user_id,
-                        on_channel_subscription_renewal,
-                )
-                await webhook.listen_channel_subscription_gifts(channel.broadcaster_user_id, on_channel_subscription_gifts)
-                await webhook.listen_livestream_status_updated(channel.broadcaster_user_id, on_livestream_status_updated)
-                await webhook.listen_livestream_metadata_updated(channel.broadcaster_user_id, on_livestream_metadata_updated)
-                await webhook.listen_moderation_banned(channel.broadcaster_user_id, on_moderation_ban)
+        livestream_ids = [live.broadcaster_user_id for live in await kick_api.get_livestreams(limit=3, sort="viewer_count")]
+        sub_ids = []
 
-        events = await kick_api.get_events_subscriptions(force_app_auth=True)
-        assert len(events) != 0
+        for user_id in livestream_ids:
+                sub_ids.append(await webhook.listen_chat_message_sent(user_id, sync_on_message))
+                sub_ids.append(await webhook.listen_channel_follow(user_id, async_on_channel_follow))
+                sub_ids.append(await webhook.listen_channel_subscription_new(user_id, on_channel_subscription_new))
+                sub_ids.append(await webhook.listen_channel_subscription_renewal(user_id, on_channel_subscription_renewal))
+                sub_ids.append(await webhook.listen_channel_subscription_gifts(user_id, on_channel_subscription_gifts))
+                sub_ids.append(await webhook.listen_livestream_status_updated(user_id, on_livestream_status_updated))
+                sub_ids.append(await webhook.listen_livestream_metadata_updated(user_id, on_livestream_metadata_updated))
+                sub_ids.append(await webhook.listen_moderation_banned(user_id, on_moderation_ban))
+
+        events = await kick_api.get_events_subscriptions(force_app_auth=FORCE_APP)
+        events_users_ids = {event.broadcaster_user_id for event in events}
+        missing_ids = [f"{user_id}" for user_id in livestream_ids if user_id not in events_users_ids]
+        if len(missing_ids):
+                pytest.fail(f"There's missing user IDs in the actual subscribed events: {missing_ids}")
+
+        extra_ids = [f"{event_id}" for event_id in events_users_ids if event_id not in livestream_ids]
+        if len(extra_ids):
+                pytest.fail(f"There's extra user IDs in the actual subscribed events: {extra_ids}")
+
+        if len(events) != len(sub_ids):
+                "The actual amount of subscribed events differs from the requested ones"
 
         while timeout > 0:
-                print(f"{timeout}s left")
+                logger.info("%fs left", timeout)
                 await asyncio.sleep(1.0)
                 timeout -= 1
 
         await webhook.stop()
-        events = await kick_api.get_events_subscriptions(force_app_auth=True)
+        events = await kick_api.get_events_subscriptions(force_app_auth=FORCE_APP)
         assert len(events) == 0
