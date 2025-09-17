@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning].
 
 - /
 
+## [0.2.0] - 2025-09-17
+
+### Changed
+
+- Improved object models
+
 ## [0.1.0] - 2025-09-16
 
 - initial release

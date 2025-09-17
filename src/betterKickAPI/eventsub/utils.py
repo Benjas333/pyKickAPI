@@ -15,11 +15,7 @@ def verify_signature(
         if not signature_b64:
                 return False
 
-        pubkey = load_pem_public_key(
-                pem_public_key.encode()
-                if isinstance(pem_public_key, str)
-                else pem_public_key
-        )
+        pubkey = load_pem_public_key(pem_public_key.encode() if isinstance(pem_public_key, str) else pem_public_key)
 
         signature = b64decode(signature_b64)
         message = message_id.encode() + b"." + timestamp.encode() + b"." + body

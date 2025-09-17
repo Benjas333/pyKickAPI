@@ -1,27 +1,22 @@
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass
-from enum import Enum, auto
+from enum import Enum
 from typing import TYPE_CHECKING, Any, TypeVar
 from urllib import parse
 
 if TYPE_CHECKING:
-        import asyncio
         from collections.abc import AsyncGenerator
-        from logging import Logger
 
-        from betterKickAPI.object.api import _Endpoint
+        from betterKickAPI.constants import _Endpoint
         from betterKickAPI.types import OAuthScope
 
 T = TypeVar("T")
 
 __all__ = [
-        "SSLOptions",
         "build_scope",
         "build_url",
         "clean_url",
-        "done_task_callback",
         "first",
         "limit",
 ]
@@ -38,7 +33,12 @@ def clean_url(url: str, default: _Endpoint) -> str:
 
 
 def build_url(
-        url: str, params: dict, *, remove_none: bool = False, split_lists: bool = False, enum_value: bool = True
+        url: str,
+        params: dict,
+        *,
+        remove_none: bool = False,
+        split_lists: bool = False,
+        enum_value: bool = True,
 ) -> str:
         def get_val(val: Any) -> str:  # noqa: ANN401
                 if not enum_value:
@@ -70,7 +70,7 @@ def build_url(
 
 
 def build_scope(scopes: list[OAuthScope]) -> str:
-        return ' '.join(scopes)
+        return " ".join(scopes)
 
 
 async def first(gen: AsyncGenerator[T, None]) -> T | None:
@@ -95,26 +95,8 @@ def get_uuid() -> uuid.UUID:
         return uuid.uuid4()
 
 
-def done_task_callback(logger: Logger, task: asyncio.Future) -> None:
-        e = task.exception()
-        if e is None:
-                return
-        logger.exception("Error while running callback: %s", e, exc_info=e)
-
-
-@dataclass
-class SSLOptions:
-        key_file_name: str | None = None
-        cert_file_name: str | None = None
-        passphrase: str | None = None
-        dh_params_file_name: str | None = None
-        ca_file_name: str | None = None
-        ssl_ciphers: str | None = None
-        ssl_prefer_low_memory_usage: int = 0
-
-
-class ServerStatus(Enum):
-        CLOSED = auto()
-        CLOSING = auto()
-        OPENING = auto()
-        OPENED = auto()
+# def done_task_callback(logger: Logger, task: asyncio.Future) -> None:
+#         e = task.exception()
+#         if e is None:
+#                 return
+#         logger.exception("Error while running callback: %s", e, exc_info=e)

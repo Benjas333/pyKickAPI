@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import AliasChoices, AliasGenerator, ConfigDict, Field, dataclasses
+from pydantic import AliasChoices, Field, dataclasses
 
 from betterKickAPI.object.api import Category
 from betterKickAPI.object.base import KickObject
@@ -19,7 +19,6 @@ __all__ = [
         "LivestreamMetadata",
         "RepliedMessage",
         "UserInfo",
-        "WebhookVerificationHeaders",
 ]
 
 
@@ -38,24 +37,24 @@ class Identity(KickObject):
 
 @dataclasses.dataclass
 class AnonUserInfo(KickObject):
-        is_anonymous: Literal[True] = True
-        user_id: None = None
-        username: None = None
-        is_verified: None = None
-        profile_picture: None = None
-        channel_slug: None = None
-        identity: None = None
+        is_anonymous: Literal[True]
+        user_id: None
+        username: None
+        is_verified: None
+        profile_picture: None
+        channel_slug: None
+        identity: None
 
 
 @dataclasses.dataclass
 class UserInfo(KickObject):
+        is_anonymous: Literal[False]
         user_id: int
         username: str
-        is_verified: bool
+        is_verified: bool | None
         profile_picture: str
         channel_slug: str
-        is_anonymous: Literal[False] = False
-        identity: Identity | None = None
+        identity: Identity | None
 
 
 @dataclasses.dataclass
@@ -82,38 +81,12 @@ class LivestreamMetadata(KickObject):
         title: str
         language: str
         has_mature_content: bool
-        category: Category | None = None
+        category: Category | None = Field(..., validation_alias=AliasChoices("category", "Category"))
+        # HACK: apparently Kick API mistakenly sends it titled instead of lower case
 
 
 @dataclasses.dataclass
 class BannedMetadata(KickObject):
+        reason: str
         created_at: datetime
-        expires_at: datetime | None = None
-        reason: str = ""
-
-
-def _parse_header_style(key: str) -> str:
-        return key.title().replace("_", "-")
-
-
-def _validation_alias(field_name: str) -> AliasChoices:
-        title = _parse_header_style(field_name)
-        return AliasChoices(title, title.lower(), field_name.title(), field_name)
-
-
-@dataclasses.dataclass(
-        config=ConfigDict(
-                serialize_by_alias=True,
-                validate_assignment=True,
-                extra="allow",
-                alias_generator=AliasGenerator(validation_alias=_validation_alias, serialization_alias=_parse_header_style),
-        )
-)
-class WebhookVerificationHeaders(KickObject):
-        kick_event_message_id: str | None = None
-        kick_event_subscription_id: str | None = None
-        kick_event_signature: str | None = None
-        kick_event_message_timestamp: str | None = None
-        kick_event_type: str | None = None
-        kick_event_version: str | None = None
-
+        expires_at: datetime | None

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import dataclasses, field_validator  # Field
+from pydantic import dataclasses  # Field
 
 from betterKickAPI.object.base import KickObject, KickObjectExtras  # AsyncIterKickObject,
 
@@ -21,7 +21,6 @@ __all__ = [
         # 'GetCategoriesResponse',
         "TokenIntrospection",
         "User",
-        "_Endpoint",
 ]
 
 
@@ -52,7 +51,7 @@ class User(KickObject):
         name: str
         profile_picture: str
         user_id: int
-        email: str | None = None
+        email: str
 
 
 @dataclasses.dataclass
@@ -74,8 +73,8 @@ class Channel(KickObject):
         channel_description: str
         slug: str
         stream_title: str
-        category: Category | None = None
-        stream: Stream | None = None
+        category: Category | None
+        stream: Stream | None
 
         @property
         def user_id(self) -> int:
@@ -91,19 +90,20 @@ class PostChatMessageResponse(KickObject):
 
 @dataclasses.dataclass
 class PostModerationBanResponse(KickObject):
+        data: dict
         message: str
-        data: dict | None = None
 
 
 @dataclasses.dataclass
 class DeleteModerationBanResponse(KickObject):
+        data: dict
         message: str
-        data: dict | None = None
 
 
 @dataclasses.dataclass
 class LiveStream(KickObject):
         broadcaster_user_id: int
+        category: Category | None
         channel_id: int
         has_mature_content: bool
         language: str
@@ -112,11 +112,10 @@ class LiveStream(KickObject):
         stream_title: str
         thumbnail: str
         viewer_count: int
-        category: Category | None = None
 
 
 @dataclasses.dataclass
-class LiveStreamStats(KickObjectExtras):  # XXX
+class LiveStreamStats(KickObjectExtras):  # XXX: Confirm fields
         total_count: int
 
 
@@ -143,18 +142,3 @@ class PostEventSubscriptionResponse(KickObject):
         version: int
         error: str | None = None
         subscription_id: str | None = None
-
-
-@dataclasses.dataclass
-class _Endpoint(KickObject):
-        base_url: str
-        suffix: str
-
-        @field_validator("base_url", mode="after")
-        @classmethod
-        def validate_base_url(cls, v: str) -> str:
-                return v.removesuffix("/")
-
-        @property
-        def url(self) -> str:
-                return self.base_url + self.suffix

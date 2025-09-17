@@ -6,7 +6,14 @@ from datetime import datetime
 from pydantic import Field, RootModel, dataclasses
 
 from betterKickAPI.object.base import KickObject
-from betterKickAPI.object.eventsub import AnonUserInfo, BannedMetadata, Emote, LivestreamMetadata, RepliedMessage, UserInfo
+from betterKickAPI.object.eventsub import (
+        AnonUserInfo,
+        BannedMetadata,
+        Emote,
+        LivestreamMetadata,
+        RepliedMessage,
+        UserInfo,
+)
 
 __all__ = [
         "ChannelFollowEvent",
@@ -29,12 +36,12 @@ class _CommonEventResponse(KickObject):
 @dataclasses.dataclass
 class ChatMessageEvent(_CommonEventResponse):
         message_id: str
+        replies_to: RepliedMessage | None
         broadcaster: UserInfo
         sender: UserInfo
         content: str
+        emotes: list[Emote] | None
         created_at: datetime
-        replies_to: RepliedMessage | None = None
-        emotes: list[Emote] | None = None
 
 
 @dataclasses.dataclass
@@ -75,7 +82,7 @@ class LivestreamStatusUpdatedEvent(_CommonEventResponse):
         is_live: bool
         title: str
         started_at: datetime
-        ended_at: datetime | None = None
+        ended_at: datetime | None
 
 
 @dataclasses.dataclass

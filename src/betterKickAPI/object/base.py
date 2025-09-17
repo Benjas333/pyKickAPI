@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Mapping
-from json import JSONDecodeError
 from typing import (
         Any,
         Callable,
@@ -68,7 +67,7 @@ IncEx: TypeAlias = Union[
 ]
 
 
-@dataclasses.dataclass(config=ConfigDict(serialize_by_alias=True, validate_assignment=True))
+@dataclasses.dataclass(config=ConfigDict(serialize_by_alias=True, validate_assignment=True, extra="forbid"))
 class KickObject:
         def model_dump(
                 self,
@@ -343,7 +342,7 @@ class AsyncIterKickObject(KickObject, Generic[T]):
                         )
                         try:
                                 resp_data = json.loads(r.content)
-                        except JSONDecodeError:
+                        except json.JSONDecodeError:
                                 resp_data = {}
                         await r.aclose()
 
