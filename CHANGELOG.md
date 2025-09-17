@@ -11,9 +11,14 @@ and this project adheres to [Semantic Versioning].
 
 ## [0.2.0] - 2025-09-17
 
+### Added
+
+- Proper rate limit handler
+
 ### Changed
 
 - Improved object models
+- Improved status_code handling
 
 ## [0.1.0] - 2025-09-16
 

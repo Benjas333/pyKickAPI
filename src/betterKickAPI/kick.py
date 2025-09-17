@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from json import JSONDecodeError
 from logging import getLogger
 from typing import (
         TYPE_CHECKING,
@@ -22,6 +21,7 @@ from betterKickAPI.constants import (
         KICK_AUTH_BASE_URL,
         Endpoints,
         ResultType,
+        _Endpoint,
 )
 from betterKickAPI.object import api
 from betterKickAPI.object.base import AsyncIterData, AsyncIterKickObject, KickObject
@@ -259,7 +259,10 @@ class Kick:
 
                 self.logger.debug("refreshing user token")
                 self._user_token_refresh_lock = True
-                self._user_auth_token, self._user_auth_refresh_token = await refresh_access_token(
+                (
+                        self._user_auth_token,
+                        self._user_auth_refresh_token,
+                ) = await refresh_access_token(
                         self._user_auth_refresh_token,  # type: ignore
                         self.app_id,
                         self.app_secret,  # type: ignore
@@ -314,10 +317,15 @@ class Kick:
                                 retries=retries - 1,
                         )
 
-                default = "Message error not provided"
+                # self.logger.info(response.content)
+                try:
+                        body = json.loads(response.content)
+                except json.JSONDecodeError:
+                        body = {}
+                data = body.get("data")
+                msg = body.get("message", "Message error not provided") + f". Extra data: {data}" if data is not None else ""
                 if response.status_code == 401:
                         if retries < 1:
-                                msg = json.loads(response.content).get("message", default)
                                 self.logger.warning(
                                         'Failed with status %d and can\'t refresh. Message: "%s"',
                                         response.status_code,
@@ -326,7 +334,6 @@ class Kick:
                                 raise UnauthorizedException(msg)
 
                         if not self.auto_refresh_auth:
-                                msg = json.loads(response.content).get("message", default)
                                 self.logger.warning(
                                         'Failed with status %d and auto-refresh is disabled. Message: "%s"',
                                         response.status_code,
@@ -334,7 +341,10 @@ class Kick:
                                 )
                                 raise UnauthorizedException(msg)
 
-                        self.logger.warning("Failed with status %d, trying to refresh token...", response.status_code)
+                        self.logger.warning(
+                                "Failed with status %d, trying to refresh token...",
+                                response.status_code,
+                        )
                         await response.aclose()
                         await self.refresh_used_token()
                         return await self._api_request(
@@ -349,24 +359,20 @@ class Kick:
                         )
 
                 if response.status_code == 500:
-                        msg = json.loads(response.content).get("message", default)
                         self.logger.warning('Failed with status %d. Message: "%s"', response.status_code, msg)
                         raise KickBackendException(f"Internal Server Error: {msg}")
 
                 if response.status_code == 400:
-                        msg = json.loads(response.content).get("message", default)
                         raise KickAPIException(f"Bad Request ({response.status_code}): {msg}")
 
                 if response.status_code == 404:
-                        try:
-                                msg = json.loads(response.content).get("message", default)
-                        except JSONDecodeError:
-                                msg = None
                         raise KickResourceNotFound(msg)
 
                 if response.status_code == 429:
-                        self.logger.warning("Reached rate limit, waiting for reset")
-                        await asyncio.sleep(5)  # Magic number because there's no rate limit header in kick API responses
+                        date = response.headers.get("date")
+                        cool_down = 5 if not date else (60 - int(date.split(":")[-1].split(" ")[0]) + 0.1)
+                        self.logger.warning("Reached rate limit, waiting for reset (%ds)", cool_down)
+                        await asyncio.sleep(cool_down)
                         await response.aclose()
                         return await self._api_request(
                                 method,
@@ -417,7 +423,7 @@ class Kick:
         async def _build_generator(
                 self,
                 method: str,
-                endpoint: api._Endpoint,
+                endpoint: _Endpoint,
                 url_params: dict,
                 auth_type: OAuthType,
                 auth_scope: list[OAuthScope],
@@ -457,7 +463,7 @@ class Kick:
         async def _build_iter_result(
                 self,
                 method: str,
-                endpoint: api._Endpoint,
+                endpoint: _Endpoint,
                 url_params: dict,
                 auth_type: OAuthType,
                 auth_scope: list[OAuthScope],
@@ -472,7 +478,13 @@ class Kick:
                 _url = helper.build_url(url, url_params, remove_none=True, split_lists=split_lists)
                 async with httpx.AsyncClient(timeout=self.session_timeout) as ses:
                         r = await self._api_request(
-                                method, ses, _url, auth_type, auth_scope, body_json=body_json, custom_headers=custom_headers
+                                method,
+                                ses,
+                                _url,
+                                auth_type,
+                                auth_scope,
+                                body_json=body_json,
+                                custom_headers=custom_headers,
                         )
                         data = json.loads(r.content)
                         await r.aclose()
@@ -497,7 +509,7 @@ class Kick:
         async def _build_result(
                 self,
                 method: str,
-                endpoint: api._Endpoint,
+                endpoint: _Endpoint,
                 url_params: dict,
                 auth_type: OAuthType,
                 auth_scope: list[OAuthScope],
@@ -515,7 +527,7 @@ class Kick:
         async def _build_result(
                 self,
                 method: str,
-                endpoint: api._Endpoint,
+                endpoint: _Endpoint,
                 url_params: dict,
                 auth_type: OAuthType,
                 auth_scope: list[OAuthScope],
@@ -533,7 +545,7 @@ class Kick:
         async def _build_result(
                 self,
                 method: str,
-                endpoint: api._Endpoint,
+                endpoint: _Endpoint,
                 url_params: dict,
                 auth_type: OAuthType,
                 auth_scope: list[OAuthScope],
@@ -551,7 +563,7 @@ class Kick:
         async def _build_result(
                 self,
                 method: str,
-                endpoint: api._Endpoint,
+                endpoint: _Endpoint,
                 url_params: dict,
                 auth_type: OAuthType,
                 auth_scope: list[OAuthScope],
@@ -569,7 +581,7 @@ class Kick:
         async def _build_result(
                 self,
                 method: str,
-                endpoint: api._Endpoint,
+                endpoint: _Endpoint,
                 url_params: dict,
                 auth_type: OAuthType,
                 auth_scope: list[OAuthScope],
@@ -587,7 +599,7 @@ class Kick:
         async def _build_result(
                 self,
                 method: str,
-                endpoint: api._Endpoint,
+                endpoint: _Endpoint,
                 url_params: dict,
                 auth_type: OAuthType,
                 auth_scope: list[OAuthScope],
@@ -604,7 +616,7 @@ class Kick:
         async def _build_result(
                 self,
                 method: str,
-                endpoint: api._Endpoint,
+                endpoint: _Endpoint,
                 url_params: dict,
                 auth_type: OAuthType,
                 auth_scope: list[OAuthScope],
@@ -661,7 +673,11 @@ class Kick:
                 if self.app_secret is None:
                         raise MissingAppSecretException()
                 headers = {"Content-Type": "application/x-www-form-urlencoded"}
-                body = {"client_id": self.app_id, "client_secret": self.app_secret, "grant_type": "client_credentials"}
+                body = {
+                        "client_id": self.app_id,
+                        "client_secret": self.app_secret,
+                        "grant_type": "client_credentials",
+                }
                 url = helper.clean_url(self.auth_base_url, Endpoints.Auth.TOKEN)
                 async with httpx.AsyncClient(timeout=self.session_timeout) as ses:
                         r = await ses.post(url, data=body, headers=headers)
@@ -935,7 +951,11 @@ class Kick:
                         custom_tags (list[str] | None, optional): Custom Tags. Defaults to `None`.
                         stream_title (str | None, optional): Stream Title. Defaults to `None`.
                 """
-                body = {"category_id": category_id, "custom_tags": custom_tags, "stream_title": stream_title}
+                body = {
+                        "category_id": category_id,
+                        "custom_tags": custom_tags,
+                        "stream_title": stream_title,
+                }
                 return (
                         await self._build_result(
                                 "PATCH",
