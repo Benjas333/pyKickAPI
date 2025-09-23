@@ -453,7 +453,7 @@ class KickWebhook:
                 handler = self._handlers.get(subscription_id)
                 if not handler:
                         resp.text = f"No handlers for '{headers_obj.kick_event_type}' event with id: {subscription_id}."
-                        if self.unsubscribe_on_handler_not_found and self._status == ServerStatus.OPENED:
+                        if self.unsubscribe_on_handler_not_found and self._status != ServerStatus.CLOSING:
                                 resp.text = f"{resp.text} Unsubscribed."
                                 self.logger.warning(resp.text)
                                 task = asyncio.create_task(self.unsubscribe_event(subscription_id))

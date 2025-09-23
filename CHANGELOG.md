@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning].
 
 - /
 
+## [0.2.1] - 2025-09-23
+
+### Fixed
+
+- Webhook.handle_incoming() now properly unsubscribes from unhandled events, even when not using internal server.
+
 ## [0.2.0] - 2025-09-17
 
 ### Added
