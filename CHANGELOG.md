@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning].
 
 - /
 
+## [0.2.2] - 2025-09-23
+
+### Fixed
+
+- Removed VerificationHeaders defaults so it throws ValidationError as expected.
+
 ## [0.2.1] - 2025-09-23
 
 ### Fixed

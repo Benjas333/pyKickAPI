@@ -93,12 +93,12 @@ def _validation_alias(field_name: str) -> AliasChoices:
         )
 )
 class VerificationHeaders(KickObject):
-        kick_event_message_id: str | None = None
-        kick_event_subscription_id: str | None = None
-        kick_event_signature: str | None = None
-        kick_event_message_timestamp: str | None = None
-        kick_event_type: str | None = None
-        kick_event_version: str | None = None
+        kick_event_message_id: str
+        kick_event_subscription_id: str
+        kick_event_signature: str
+        kick_event_message_timestamp: str
+        kick_event_type: str
+        kick_event_version: str
 
 
 class KickWebhook:
