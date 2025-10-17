@@ -1,6 +1,6 @@
 [project]
 name = "betterKickAPI"
-version = "0.2.2"
+version = "0.2.2.post1"
 description = "A Python 3.9+ implementation of the Kick API and Webhook. Highly inspired on twitchAPI"
 readme = "README.md"
 authors = [
@@ -18,7 +18,7 @@ dependencies = [
     "socketify>=0.0.31",
     "strenum>=0.4.15",
 ]
-keywords = ['kick', 'kick.com', 'chat', 'webhook', 'event sub', 'EventSub', 'api']
+keywords = ['kick', 'kick.com', 'chat', 'webhook', 'event sub', 'EventSub', 'api', 'kickapi']
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",

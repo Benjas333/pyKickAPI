@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning].
 
 - /
 
+## [0.2.2.post1] - 2025-10-16
+
+- Added kickpython as package recommendation (to avoid misinterpretations with this package's name).
+
 ## [0.2.2] - 2025-09-23
 
 ### Fixed

@@ -2,18 +2,20 @@
 
 A full implementation of the Kick API and EventSub in Python 3.9+.
 
-Heavily inspired on [pyTwitchAPI](https://github.com/Teekeks/pyTwitchAPI). My mission is to maintain parity with the twitchAPI library for an easier manipulation of both libraries in any project.
+Heavily inspired on [pyTwitchAPI]. My mission is to maintain parity with the [twitchAPI] library for an easier manipulation of both libraries in any project.
 
 > [!NOTE]
-> The library was intended to be called `kickAPI` to have parity with `twitchAPI`, but the name is already taken. So the library was re-branded to `kick_api`.
+> The library was intended to be called `kickAPI` to have parity with [twitchAPI], but the name is already taken. So the library was re-branded to `kick_api`.
 >
 > Update:\
 > PyPI didn't like `kick_api`, a friend of mine recommended me `betterKickAPI`, and I liked it. So, re-branded to `betterKickAPI`.
 
+> [!TIP]
+> Also try [kickpython] that includes his own WebSocket implementation!
+
 ## Installation
 
 Install using pip:
-
 ```
 pip install betterKickAPI
 ```
@@ -118,10 +120,15 @@ The EventSub client runs in its own process, calling the given callback function
 
 ## TODO
 
+- Use aiohttp instead of httpx because of performance (or another better alternative).
 - Add documentation.
 - Add EventSub WebSockets when available.
 
 ## Acknowledges
 
-- [pyTwitchAPI](https://github.com/Teekeks/pyTwitchAPI): A Python 3.7 compatible implementation of the Twitch API, EventSub and Chat.
-- [KickPython](https://github.com/berkay-digital/kickpython): Kick.com Python Public API Wrapper
+- [pyTwitchAPI]: A Python 3.7 compatible implementation of the Twitch API, EventSub and Chat.
+- [KickPython]: Kick.com Python Public API Wrapper
+
+[pyTwitchAPI]: https://github.com/Teekeks/pyTwitchAPI
+[twitchAPI]: https://pypi.org/project/twitchAPI/
+[KickPython]: https://github.com/berkay-digital/kickpython
