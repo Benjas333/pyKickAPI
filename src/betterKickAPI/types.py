@@ -63,21 +63,23 @@ class WebhookEvents(Enum):
         # READY = _WebhookEvent(name="ready", version=1)
         # """Triggered when the bot is started up and ready."""
         CHAT_MESSAGE = _WebhookEvent(name="chat.message.sent", version=1)
-        """Triggered when someone wrote a message in a chat channel."""
+        """Fired when a message has been sent in a stream's chat."""
         CHANNEL_FOLLOW = _WebhookEvent(name="channel.followed", version=1)
-        """Triggered when someone followed a channel."""
+        """Fired when a user follows a channel."""
         CHANNEL_SUBSCRIPTION_RENEWAL = _WebhookEvent(name="channel.subscription.renewal", version=1)
-        """Triggered when someone renewed its subscription to a channel."""
+        """Fired when a user's subscription to a channel is renewed."""
         CHANNEL_SUBSCRIPTION_GIFTS = _WebhookEvent(name="channel.subscription.gifts", version=1)
-        """Triggered when someone gifted one or more subscriptions to a channel."""
+        """Fired when a user gifts subscriptions to a channel."""
         CHANNEL_SUBSCRIPTION_CREATED = _WebhookEvent(name="channel.subscription.new", version=1)
-        """Triggered when someone subscribed to a channel."""
+        """Fired when a user first subscribes to a channel."""
         LIVESTREAM_STATUS_UPDATED = _WebhookEvent(name="livestream.status.updated", version=1)
-        """Triggered when the livestream status is updated."""
+        """Fired when a stream's status has been updated. For example, a stream could have started or ended"""
         LIVESTREAM_METADATA_UPDATED = _WebhookEvent(name="livestream.metadata.updated", version=1)
-        """Triggered when the livestream metadata is updated."""
+        """Fired when a stream's metadata has been updated. For example, a stream's title could have changed."""
         MODERATION_BANNED = _WebhookEvent(name="moderation.banned", version=1)
-        """Triggered when someone is banned by a moderator."""
+        """Fired when a user has been banned from a channel."""
+        KICKS_GIFTED = _WebhookEvent(name="kicks.gifted", version=1)
+        """Fired when a user gifts kicks to a channel."""
 
 
 class KickAPIException(Exception):

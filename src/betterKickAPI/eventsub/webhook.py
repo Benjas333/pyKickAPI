@@ -22,6 +22,7 @@ from betterKickAPI.eventsub.events import (
         ChannelSubscriptionNewEvent,
         ChannelSubscriptionRenewalEvent,
         ChatMessageEvent,
+        KicksGiftedEvent,
         LivestreamMetadataUpdatedEvent,
         LivestreamStatusUpdatedEvent,
         ModerationBannedEvent,
@@ -232,7 +233,7 @@ class KickWebhook:
 
         async def start(
                 self,
-                port: int = 3000,
+                port: int = 3330,
                 host_binding: str = "127.0.0.1",
                 # ssl_context: SSLContext | None = None,
                 ssl_options: SSLOptions | None = None,
@@ -240,7 +241,7 @@ class KickWebhook:
                 """Starts the EventSub client.
 
                 Args:
-                        port (int, optional): The port on which this webhook should run. Defaults to 3000.
+                        port (int, optional): The port on which this webhook should run. Defaults to `3330`.
                         host_binding (str, optional): The host to bind the internal server to. Defaults to "127.0.0.1".
                         ssl_options (SSLOptions | None, optional): Optional SSLOptions to be used. Defaults to None.
 
@@ -493,7 +494,7 @@ class KickWebhook:
                 broadcaster_user_id: int,
                 callback: EventCallback[ChatMessageEvent],
         ) -> str:
-                """A message is sent to the broadcaster's chat room.
+                """Fired when a message has been sent in the broadcaster stream's chat.
 
                 For more information, see here: https://docs.kick.com/events/event-types#chat-message
 
@@ -511,7 +512,7 @@ class KickWebhook:
                 broadcaster_user_id: int,
                 callback: EventCallback[ChannelFollowEvent],
         ) -> str:
-                """A user followed the broadcaster's channel.
+                """Fired when a user follows the broadcaster's channel.
 
                 For more information, see here: https://docs.kick.com/events/event-types#channel-follow
 
@@ -529,7 +530,7 @@ class KickWebhook:
                 broadcaster_user_id: int,
                 callback: EventCallback[ChannelSubscriptionGiftsEvent],
         ) -> str:
-                """A user gifted one or more subscriptions to the broadcaster's channel.
+                """Fired when a user gifts subscriptions to the broadcaster's channel.
 
                 For more information, see here: https://docs.kick.com/events/event-types#channel-subscription-gifts
 
@@ -552,7 +553,7 @@ class KickWebhook:
                 broadcaster_user_id: int,
                 callback: EventCallback[ChannelSubscriptionNewEvent],
         ) -> str:
-                """A user subscribed for the first time to the broadcaster's channel.
+                """Fired when a user first subscribes to the broadcaster's channel.
 
                 For more information, see here: https://docs.kick.com/events/event-types#channel-subscription-created
 
@@ -575,7 +576,7 @@ class KickWebhook:
                 broadcaster_user_id: int,
                 callback: EventCallback[ChannelSubscriptionRenewalEvent],
         ) -> str:
-                """A user resubscribed to the broadcaster's channel.
+                """Fired when a user's subscription to the broadcaster's channel is renewed.
 
                 For more information, see here: https://docs.kick.com/events/event-types#channel-subscription-renewal
 
@@ -598,7 +599,8 @@ class KickWebhook:
                 broadcaster_user_id: int,
                 callback: EventCallback[LivestreamMetadataUpdatedEvent],
         ) -> str:
-                """The broadcaster livestream metadata has changed.
+                """Fired when the broadcaster stream's status has been updated.\n
+                For example, the stream could have started or ended.
 
                 For more information, see here: https://docs.kick.com/events/event-types#livestream-metadata-updated
 
@@ -621,7 +623,8 @@ class KickWebhook:
                 broadcaster_user_id: int,
                 callback: EventCallback[LivestreamStatusUpdatedEvent],
         ) -> str:
-                """The broadcaster live status has changed.
+                """Fired when the broadcaster stream's metadata has been updated.\n
+                For example, the stream's title could have changed.
 
                 For more information, see here: https://docs.kick.com/events/event-types#livestream-status-updated
 
@@ -644,7 +647,7 @@ class KickWebhook:
                 broadcaster_user_id: int,
                 callback: EventCallback[ModerationBannedEvent],
         ) -> str:
-                """A moderator has banned a user in the broadcaster's chat room.
+                """Fired when a user has been banned from the broadcaster's channel.
 
                 For more information, see here: https://docs.kick.com/events/event-types#moderation-banned
 
@@ -660,4 +663,27 @@ class KickWebhook:
                         broadcaster_user_id,
                         callback,
                         ModerationBannedEvent,
+                )
+
+        async def listen_kicks_gifted(
+                self,
+                broadcaster_user_id: int,
+                callback: EventCallback[KicksGiftedEvent],
+        ) -> str:
+                """Fired when a user gifts kicks to the broadcaster's channel.
+
+                For more information, see here: https://docs.kick.com/events/event-types#kicks-gifted
+
+                Args:
+                    broadcaster_user_id (int): The ID of the user's chat room you want to listen to.
+                    callback (EventCallback[KicksGiftedEvent]): Function for callback.
+
+                Returns:
+                    str: The subscription ID.
+                """
+                return await self._subscribe(
+                        WebhookEvents.KICKS_GIFTED,
+                        broadcaster_user_id,
+                        callback,
+                        KicksGiftedEvent,
                 )

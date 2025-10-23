@@ -9,7 +9,9 @@ from betterKickAPI.object.base import KickObject
 from betterKickAPI.object.eventsub import (
         AnonUserInfo,
         BannedMetadata,
+        CompactUserInfo,
         Emote,
+        KickGift,
         LivestreamMetadata,
         RepliedMessage,
         UserInfo,
@@ -21,6 +23,7 @@ __all__ = [
         "ChannelSubscriptionNewEvent",
         "ChannelSubscriptionRenewalEvent",
         "ChatMessageEvent",
+        "KicksGiftedEvent",
         "LivestreamMetadataUpdatedEvent",
         "LivestreamStatusUpdatedEvent",
         "RawEvent",
@@ -97,6 +100,14 @@ class ModerationBannedEvent(_CommonEventResponse):
         moderator: UserInfo
         banned_user: UserInfo
         metadata: BannedMetadata
+
+
+@dataclasses.dataclass
+class KicksGiftedEvent(_CommonEventResponse):
+        broadcaster: CompactUserInfo
+        sender: CompactUserInfo
+        gift: KickGift
+        created_at: datetime
 
 
 RawEvent = RootModel[dict]

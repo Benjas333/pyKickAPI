@@ -12,10 +12,12 @@ from betterKickAPI.object.base import KickObject
 __all__ = [
         "AnonUserInfo",
         "BannedMetadata",
+        "CompactUserInfo",
         "Emote",
         "EmotePosition",
         "Identity",
         "IdentityBadge",
+        "KickGift",
         "LivestreamMetadata",
         "RepliedMessage",
         "UserInfo",
@@ -36,6 +38,21 @@ class Identity(KickObject):
 
 
 @dataclasses.dataclass
+class CompactUserInfo(KickObject):
+        user_id: int
+        username: str
+        is_verified: bool | None
+        profile_picture: str
+        channel_slug: str
+
+
+@dataclasses.dataclass
+class UserInfo(CompactUserInfo):
+        is_anonymous: Literal[False]
+        identity: Identity | None
+
+
+@dataclasses.dataclass
 class AnonUserInfo(KickObject):
         is_anonymous: Literal[True]
         user_id: None
@@ -44,17 +61,6 @@ class AnonUserInfo(KickObject):
         profile_picture: None
         channel_slug: None
         identity: None
-
-
-@dataclasses.dataclass
-class UserInfo(KickObject):
-        is_anonymous: Literal[False]
-        user_id: int
-        username: str
-        is_verified: bool | None
-        profile_picture: str
-        channel_slug: str
-        identity: Identity | None
 
 
 @dataclasses.dataclass
@@ -90,3 +96,12 @@ class BannedMetadata(KickObject):
         reason: str
         created_at: datetime
         expires_at: datetime | None
+
+
+@dataclasses.dataclass
+class KickGift(KickObject):
+        amount: int
+        name: str
+        type: str
+        tier: str
+        message: str

@@ -9,7 +9,22 @@ and this project adheres to [Semantic Versioning].
 
 - /
 
+## [0.3.0] - 2025-10-23
+
+### Added
+
+- Kicks Gifted Webhook Event.
+- `listen_kicks_gifted()` in KickWebhook.
+
+### Changed
+
+- Some __init__.py files for better importing.
+- KickWebhook server default port.
+- Now KickWebhook and WebhookEvents docstrings match the new official descriptions from the Kick documentation.
+
 ## [0.2.2.post1] - 2025-10-16
+
+### Added
 
 - Added kickpython as package recommendation (to avoid misinterpretations with this package's name).
 
