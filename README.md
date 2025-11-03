@@ -11,7 +11,7 @@ Heavily inspired on [pyTwitchAPI]. My mission is to maintain parity with the [tw
 > PyPI didn't like `kick_api`, a friend of mine recommended me `betterKickAPI`, and I liked it. So, re-branded to `betterKickAPI`.
 
 > [!TIP]
-> Also try [kickpython] that includes his own WebSocket implementation!
+> Also try [kickpython] that includes its own WebSocket implementation!
 
 ## Installation
 
@@ -44,12 +44,9 @@ async def kick_example():
         # Initialize the kick instance, this will by default also create an app authentication for you
         kick = await Kick('APP_ID', 'APP_SECRET')
 
-        # this returns an async generator that can be used to iterate over all results
-        # but we are just interested in the first result
-        # using the first helper makes this easy
-        user = await first(kick.get_users(slug='your_kick_user'))
+        users = await kick.get_users(slug='your_kick_user')
         # print the ID of your user
-        print(user.broadcaster_user_id)
+        print(user[0].broadcaster_user_id)
 
 # run this example
 asyncio.run(kick_example())

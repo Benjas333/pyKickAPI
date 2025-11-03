@@ -1,6 +1,6 @@
 [project]
 name = "betterKickAPI"
-version = "1.0.0"
+version = "1.0.0.post1"
 description = "A Python 3.9+ implementation of the Kick API and Webhook. Highly inspired on twitchAPI"
 readme = "README.md"
 authors = [
