@@ -37,8 +37,9 @@ def logger() -> Generator[None, Any, None]:
         # root.handlers = []
         for handler in root.handlers:
                 handler.addFilter(OnlyKickAPIFilter("kickAPI"))
+                # handler.setLevel(INFO)
         # root.addHandler(handler)
-        # root.setLevel(DEBUG)
+        # root.setLevel(INFO)
         yield
 
 

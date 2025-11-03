@@ -4,7 +4,7 @@ import asyncio
 import os
 import threading
 import time
-from logging import DEBUG, Logger, getLogger
+from logging import Logger, getLogger
 from logging.handlers import QueueHandler
 from typing import TYPE_CHECKING, Any
 
@@ -56,7 +56,7 @@ def AuthServer(  # noqa: N802
         auth_code_event: synchronize.Event,
 ) -> None:
         logger = getLogger("kickAPI.servers.auth")
-        logger.setLevel(DEBUG)
+        # logger.setLevel(DEBUG)
         logger.addHandler(QueueHandler(logger_queue))
         document: html = b"""<!DOCTYPE html>
         <html lang="en">
@@ -98,7 +98,7 @@ def AuthServer(  # noqa: N802
         app.get("/", handle_callback)
         app.listen(
                 socketify.AppListenOptions(port, host),
-                lambda config: logger.debug(
+                lambda config: logger.info(
                         "PID (%d) Server started at http://%s:%d",
                         os.getpid(),
                         config.host,
@@ -122,7 +122,7 @@ def AuthServer(  # noqa: N802
         app.run()
 
 
-def WebhookServer(  # noqa: N802
+def WebhookServer(  # noqa: C901, N802
         port: int,
         host: str,
         logger_queue: multiprocessing.Queue,
@@ -130,10 +130,11 @@ def WebhookServer(  # noqa: N802
         responses: managers.DictProxy[Any, Any],
         # response_event: synchronize.Event,
         stop_event: synchronize.Event,
+        endpoint: str,
         ssl_options: SSLOptions | None = None,
 ) -> None:
         logger = getLogger("kickAPI.servers.webhook")
-        logger.setLevel(DEBUG)
+        # logger.setLevel(DEBUG)
         logger.addHandler(QueueHandler(logger_queue))
         app_options = None
         if ssl_options:
@@ -182,10 +183,15 @@ def WebhookServer(  # noqa: N802
                         else:
                                 res.send("Server timeout.", status=504)
                                 return
+                except BrokenPipeError as e:
+                        msg = f"Shutting down: {e}"
+                        logger.error(msg)
+                        res.send(msg, status=200)
+                        return
                 except Exception as e:
-                        msg = f"Server error (probably shutting down): {e}"
+                        msg = f"Server error: {e}"
                         logger.exception(msg)
-                        res.send(msg, status=503)
+                        res.send(msg, status=500)
                         return
 
                 if not isinstance(response, dict):
@@ -194,19 +200,20 @@ def WebhookServer(  # noqa: N802
 
                 delta = time.time() - start
                 if delta > 1:
-                        logger.warning('Server response took %fs', delta)
+                        logger.warning("Server response took %fs", delta)
                 res.send(response.get("text", ""), status=response.get("status", 500))
 
         app = socketify.App(app_options)
         app.get("/", lambda res, _: res.end("pyKickAPI Webhook"))
-        app.post("/callback", handle_callback)
+        app.post(endpoint, handle_callback)
         app.listen(
                 socketify.AppListenOptions(port, host),
-                lambda config: logger.debug(
-                        "PID (%d) Server started at http://%s:%d",
+                lambda config: logger.info(
+                        "PID (%d) Server started at http://%s:%d\nWebhook endpoint: %s",
                         os.getpid(),
                         config.host,
                         config.port,
+                        endpoint,
                 ),
         )
 

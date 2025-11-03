@@ -120,7 +120,6 @@ The EventSub client runs in its own process, calling the given callback function
 
 ## TODO
 
-- Use aiohttp instead of httpx because of performance (or another better alternative).
 - Considering getting rid of socketify because of linux dependencies.
 - Add documentation.
 - Add EventSub WebSockets when available.

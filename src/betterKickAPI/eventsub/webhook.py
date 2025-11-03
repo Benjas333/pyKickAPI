@@ -3,58 +3,30 @@ from __future__ import annotations
 import asyncio
 import multiprocessing
 from collections import deque
-from collections.abc import Awaitable
 from dataclasses import dataclass
 from logging import getLogger
 from logging.handlers import QueueListener
 from multiprocessing import managers, synchronize
 from queue import Empty
-from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar, Union
+from typing import TYPE_CHECKING, Any
 
 import orjson as json
 from pydantic import AliasChoices, AliasGenerator, ConfigDict, ValidationError, dataclasses
 
 from betterKickAPI.constants import ServerStatus
 from betterKickAPI.eventsub import utils
-from betterKickAPI.eventsub.events import (
-        ChannelFollowEvent,
-        ChannelSubscriptionGiftsEvent,
-        ChannelSubscriptionNewEvent,
-        ChannelSubscriptionRenewalEvent,
-        ChatMessageEvent,
-        KicksGiftedEvent,
-        LivestreamMetadataUpdatedEvent,
-        LivestreamStatusUpdatedEvent,
-        ModerationBannedEvent,
-        _CommonEventResponse,
-)
+from betterKickAPI.eventsub.base import _E, EventCallback, EventSubBase
 from betterKickAPI.object.base import KickObject
 from betterKickAPI.servers import WebhookServer
 from betterKickAPI.types import (
+        EventSubEvents,
         EventSubSubscriptionError,
-        KickAPIException,
-        WebhookEvents,
 )
 
 if TYPE_CHECKING:
         from betterKickAPI.kick import Kick
 
 __all__ = ["KickWebhook", "SSLOptions", "VerificationHeaders"]
-E = TypeVar("E", bound=_CommonEventResponse)
-EventCallback = Callable[[E], Union[Awaitable[None], None]]
-
-
-@dataclass
-class _EventSubscription(Generic[E]):
-        sub_id: str
-        response_type: type[E]
-        callback: EventCallback[E]
-        active: bool = False
-        """
-        Added because twitchAPI also has it. But it looks like it's never used (?).
-
-        *Kept in case it's used in the future*
-        """
 
 
 @dataclass
@@ -102,7 +74,7 @@ class VerificationHeaders(KickObject):
         kick_event_version: str
 
 
-class KickWebhook:
+class KickWebhook(EventSubBase):
         """EventSub integration for the Kick API."""
 
         def __init__(
@@ -138,22 +110,17 @@ class KickWebhook:
                         msg_id_history_max_length (int, optional): The amount of messages being considered for the duplicate
                                 message deduplication. Defaults to `50`.
                 """
-                self.logger = getLogger("kickAPI.eventsub.webhook")
-                self._kick = kick
+                super().__init__(kick, "kickAPI.eventsub.webhook", force_app_auth=force_app_auth)
 
                 self._public_key_pem = public_key_pem
                 self._auto_fetch_public_key = auto_fetch_public_key
-                self.force_app_auth = force_app_auth
-                """Use App Auth in all the EventSub related endpoints."""
 
                 self._status = ServerStatus.CLOSED
 
                 self.unsubscribe_on_stop = True
-                """Unsubscribe all currently active Webhooks on calling `EventSub.stop()`."""
+                """Unsubscribe all currently active Webhook Events on calling `KickWebhook.stop()`. Defaults to `True`."""
                 self.unsubscribe_on_handler_not_found = True
-                """Unsubscribe to received Webhook Events that don¿t have handlers set."""
-
-                self._handlers: dict[str, _EventSubscription] = {}
+                """Unsubscribe to received Webhook Events that don't have handlers set. Defaults to `True`."""
 
                 self.__process: multiprocessing.Process | None = None
                 self.__stop_event: synchronize.Event = multiprocessing.Event()
@@ -176,13 +143,13 @@ class KickWebhook:
                 self._shutdown_cmd = "SHUTDOWN-SERVER"
 
         async def get_public_key(self) -> str:
-                if self._public_key_pem:
-                        return self._public_key_pem
-
-                if not self._auto_fetch_public_key:
-                        raise RuntimeError("No public key configured and auto_fetch_public_key is disabled.")
-
                 async with self._lock:
+                        if self._public_key_pem:
+                                return self._public_key_pem
+
+                        if not self._auto_fetch_public_key:
+                                raise RuntimeError("No public key configured and auto_fetch_public_key is disabled.")
+
                         self._public_key_pem = await self._kick.get_public_key()
                 return self._public_key_pem
 
@@ -231,11 +198,12 @@ class KickWebhook:
                                 pass
                         self._manager.shutdown()
 
-        async def start(
+        def start(
                 self,
                 port: int = 3330,
                 host_binding: str = "127.0.0.1",
                 # ssl_context: SSLContext | None = None,
+                endpoint: str = "/callback",
                 ssl_options: SSLOptions | None = None,
         ) -> None:
                 """Starts the EventSub client.
@@ -243,6 +211,7 @@ class KickWebhook:
                 Args:
                         port (int, optional): The port on which this webhook should run. Defaults to `3330`.
                         host_binding (str, optional): The host to bind the internal server to. Defaults to "127.0.0.1".
+                        endpoint (str, optional): The endpoint that will handle the webhook events. Defaults to "/callback".
                         ssl_options (SSLOptions | None, optional): Optional SSLOptions to be used. Defaults to None.
 
                 Raises:
@@ -265,6 +234,7 @@ class KickWebhook:
                                 self._request_queue,
                                 self._responses,
                                 self.__stop_event,
+                                endpoint,
                                 ssl_options,
                         ),
                         # daemon=True,
@@ -316,25 +286,12 @@ class KickWebhook:
                 self.logger.debug("Webhook shut down")
                 self.__stop_event.clear()
 
-        def _add_callback(
-                self,
-                sub_id: str,
-                callback: EventCallback[E],
-                response_type: type[E],
-        ) -> None:
-                self._handlers[sub_id] = _EventSubscription(
-                        sub_id=sub_id,
-                        response_type=response_type,
-                        callback=callback,
-                        active=True,
-                )
-
         async def _subscribe(
                 self,
-                event: WebhookEvents,
+                event: EventSubEvents,
                 broadcaster_user_id: int,
-                callback: EventCallback[E],
-                response_type: type[E],
+                callback: EventCallback[_E],
+                response_type: type[_E],
         ) -> str:
                 self.logger.debug("Subscribing to %s version %d", event.value.name, event.value.version)
                 event_subs = await self._kick.post_events_subscriptions(
@@ -352,54 +309,11 @@ class KickWebhook:
                         raise EventSubSubscriptionError("'subscription_id' is None")
 
                 self.logger.debug("Subscription for %s version %d has id %s", event.value.name, event.value.version, sub_id)
-                self._add_callback(sub_id, callback, response_type)
+                await self._add_callback(sub_id, callback, response_type)
                 # NOTE: Skipped because Kick Webhook doesn't sends subscription confirmations (I think)
                 # https://github.com/Teekeks/pyTwitchAPI/blob/master/twitchAPI/eventsub/webhook.py#L299
                 # if self.wait_for_subscription_confirm:
                 return sub_id
-
-        async def unsubscribe_event(self, subscription_id: str) -> bool:
-                """Unsubscribe from a specific event.
-
-                Args:
-                        subscription_id (str): The subscription ID.
-
-                Returns:
-                        bool: `True` if it was successful, otherwise `False`.
-                """
-                try:
-                        await self._kick.delete_events_subscriptions([subscription_id], force_app_auth=self.force_app_auth)
-                        self._handlers.pop(subscription_id)
-                        # return await self._unsubscribe_hook(subscription_id)
-                        return True
-                except KickAPIException as e:
-                        self.logger.warning("Failed to unsubscribe from %d: %s", subscription_id, e, exc_info=e)
-                return False
-
-        async def unsubscribe_all(self) -> None:
-                """Unsubscribe from all subscriptions."""
-                subs = await self._kick.get_events_subscriptions(force_app_auth=self.force_app_auth)
-                if not len(subs):
-                        return
-                try:
-                        await self._kick.delete_events_subscriptions(
-                                [event_sub.id for event_sub in subs],
-                                force_app_auth=self.force_app_auth,
-                        )
-                except KickAPIException as e:
-                        self.logger.warning("Failed to unsubscribe from events: %s", e, exc_info=e)
-                self._handlers.clear()
-
-        async def unsubscribe_all_local_knowns(self) -> None:
-                """Unsubscribe from all subscriptions known to this client."""
-                self.logger.debug("Unsubscribing from local events")
-                try:
-                        await self._kick.delete_events_subscriptions(
-                                [sub.sub_id for sub in self._handlers.values()],
-                                force_app_auth=self.force_app_auth,
-                        )
-                except KickAPIException as e:
-                        self.logger.warning("Failed to unsubscribe from local events: %s", e, exc_info=e)
 
         async def handle_incoming(  # noqa: C901
                 self,
@@ -488,202 +402,3 @@ class KickWebhook:
                         asyncio.get_running_loop().run_in_executor(None, _call_sync)
 
                 return resp
-
-        async def listen_chat_message_sent(
-                self,
-                broadcaster_user_id: int,
-                callback: EventCallback[ChatMessageEvent],
-        ) -> str:
-                """Fired when a message has been sent in the broadcaster stream's chat.
-
-                For more information, see here: https://docs.kick.com/events/event-types#chat-message
-
-                Args:
-                        broadcaster_user_id (int): The ID of the user's chat room you want to listen to.
-                        callback (EventCallback[ChatMessageEvent]): Function for callback.
-
-                Returns:
-                        str: The subscription ID.
-                """
-                return await self._subscribe(WebhookEvents.CHAT_MESSAGE, broadcaster_user_id, callback, ChatMessageEvent)
-
-        async def listen_channel_follow(
-                self,
-                broadcaster_user_id: int,
-                callback: EventCallback[ChannelFollowEvent],
-        ) -> str:
-                """Fired when a user follows the broadcaster's channel.
-
-                For more information, see here: https://docs.kick.com/events/event-types#channel-follow
-
-                Args:
-                        broadcaster_user_id (int): The ID of the user's channel you want to listen to.
-                        callback (EventCallback[ChannelFollowEvent]): Function for callback.
-
-                Returns:
-                        str: The subscription ID.
-                """
-                return await self._subscribe(WebhookEvents.CHANNEL_FOLLOW, broadcaster_user_id, callback, ChannelFollowEvent)
-
-        async def listen_channel_subscription_gifts(
-                self,
-                broadcaster_user_id: int,
-                callback: EventCallback[ChannelSubscriptionGiftsEvent],
-        ) -> str:
-                """Fired when a user gifts subscriptions to the broadcaster's channel.
-
-                For more information, see here: https://docs.kick.com/events/event-types#channel-subscription-gifts
-
-                Args:
-                        broadcaster_user_id (int): The ID of the user's channel you want to listen to.
-                        callback (EventCallback[ChannelSubscriptionGiftsEvent]): Function for callback.
-
-                Returns:
-                        str: The subscription ID.
-                """
-                return await self._subscribe(
-                        WebhookEvents.CHANNEL_SUBSCRIPTION_GIFTS,
-                        broadcaster_user_id,
-                        callback,
-                        ChannelSubscriptionGiftsEvent,
-                )
-
-        async def listen_channel_subscription_new(
-                self,
-                broadcaster_user_id: int,
-                callback: EventCallback[ChannelSubscriptionNewEvent],
-        ) -> str:
-                """Fired when a user first subscribes to the broadcaster's channel.
-
-                For more information, see here: https://docs.kick.com/events/event-types#channel-subscription-created
-
-                Args:
-                        broadcaster_user_id (int): The ID of the user's channel you want to listen to.
-                        callback (EventCallback[ChannelSubscriptionNewEvent]): Function for callback.
-
-                Returns:
-                        str: The subscription ID.
-                """
-                return await self._subscribe(
-                        WebhookEvents.CHANNEL_SUBSCRIPTION_CREATED,
-                        broadcaster_user_id,
-                        callback,
-                        ChannelSubscriptionNewEvent,
-                )
-
-        async def listen_channel_subscription_renewal(
-                self,
-                broadcaster_user_id: int,
-                callback: EventCallback[ChannelSubscriptionRenewalEvent],
-        ) -> str:
-                """Fired when a user's subscription to the broadcaster's channel is renewed.
-
-                For more information, see here: https://docs.kick.com/events/event-types#channel-subscription-renewal
-
-                Args:
-                        broadcaster_user_id (int): The ID of the user's channel you want to listen to.
-                        callback (EventCallback[ChannelSubscriptionRenewalEvent]): Function for callback.
-
-                Returns:
-                        str: The subscription ID.
-                """
-                return await self._subscribe(
-                        WebhookEvents.CHANNEL_SUBSCRIPTION_RENEWAL,
-                        broadcaster_user_id,
-                        callback,
-                        ChannelSubscriptionRenewalEvent,
-                )
-
-        async def listen_livestream_metadata_updated(
-                self,
-                broadcaster_user_id: int,
-                callback: EventCallback[LivestreamMetadataUpdatedEvent],
-        ) -> str:
-                """Fired when the broadcaster stream's status has been updated.\n
-                For example, the stream could have started or ended.
-
-                For more information, see here: https://docs.kick.com/events/event-types#livestream-metadata-updated
-
-                Args:
-                        broadcaster_user_id (int): The ID of the user you want to listen to.
-                        callback (EventCallback[LivestreamMetadataUpdatedEvent]): Function for callback.
-
-                Returns:
-                        str: The subscription ID.
-                """
-                return await self._subscribe(
-                        WebhookEvents.LIVESTREAM_METADATA_UPDATED,
-                        broadcaster_user_id,
-                        callback,
-                        LivestreamMetadataUpdatedEvent,
-                )
-
-        async def listen_livestream_status_updated(
-                self,
-                broadcaster_user_id: int,
-                callback: EventCallback[LivestreamStatusUpdatedEvent],
-        ) -> str:
-                """Fired when the broadcaster stream's metadata has been updated.\n
-                For example, the stream's title could have changed.
-
-                For more information, see here: https://docs.kick.com/events/event-types#livestream-status-updated
-
-                Args:
-                        broadcaster_user_id (int): The ID of the user you want to listen to.
-                        callback (EventCallback[LivestreamStatusUpdatedEvent]): Function for callback.
-
-                Returns:
-                        str: The subscription ID.
-                """
-                return await self._subscribe(
-                        WebhookEvents.LIVESTREAM_STATUS_UPDATED,
-                        broadcaster_user_id,
-                        callback,
-                        LivestreamStatusUpdatedEvent,
-                )
-
-        async def listen_moderation_banned(
-                self,
-                broadcaster_user_id: int,
-                callback: EventCallback[ModerationBannedEvent],
-        ) -> str:
-                """Fired when a user has been banned from the broadcaster's channel.
-
-                For more information, see here: https://docs.kick.com/events/event-types#moderation-banned
-
-                Args:
-                        broadcaster_user_id (int): The ID of the user's chat room you want to listen to.
-                        callback (EventCallback[ModerationBannedEvent]): Function for callback.
-
-                Returns:
-                        str: The subscription ID.
-                """
-                return await self._subscribe(
-                        WebhookEvents.MODERATION_BANNED,
-                        broadcaster_user_id,
-                        callback,
-                        ModerationBannedEvent,
-                )
-
-        async def listen_kicks_gifted(
-                self,
-                broadcaster_user_id: int,
-                callback: EventCallback[KicksGiftedEvent],
-        ) -> str:
-                """Fired when a user gifts kicks to the broadcaster's channel.
-
-                For more information, see here: https://docs.kick.com/events/event-types#kicks-gifted
-
-                Args:
-                    broadcaster_user_id (int): The ID of the user's chat room you want to listen to.
-                    callback (EventCallback[KicksGiftedEvent]): Function for callback.
-
-                Returns:
-                    str: The subscription ID.
-                """
-                return await self._subscribe(
-                        WebhookEvents.KICKS_GIFTED,
-                        broadcaster_user_id,
-                        callback,
-                        KicksGiftedEvent,
-                )

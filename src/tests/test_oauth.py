@@ -15,6 +15,7 @@ SCOPES = [
         OAuthScope.EVENTS_SUBSCRIBE,
         OAuthScope.MODERATION_BAN,
         OAuthScope.USER_READ,
+        OAuthScope.KICKS_READ,
 ]
 
 

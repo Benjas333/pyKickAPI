@@ -12,8 +12,9 @@ from typing import (
         overload,
 )
 
-import httpx
+import aiohttp
 import orjson as json
+from aiohttp import ClientResponse, ClientSession, ClientTimeout
 
 from betterKickAPI import helper
 from betterKickAPI.constants import (
@@ -26,6 +27,7 @@ from betterKickAPI.constants import (
 from betterKickAPI.object import api
 from betterKickAPI.object.base import AsyncIterData, AsyncIterKickObject, KickObject
 from betterKickAPI.types import (
+        EventSubEvents,
         InvalidTokenException,
         KickAPIException,
         KickAuthorizationException,
@@ -61,7 +63,7 @@ class Kick:
                 # target_app_auth_scope: list[OAuthScope] | None = None,
                 base_url: str = KICK_API_BASE_URL,
                 auth_base_url: str = KICK_AUTH_BASE_URL,
-                session_timeout: int = 300,
+                session_timeout: object | ClientTimeout = aiohttp.helpers.sentinel,
         ) -> None:
                 """
 
@@ -74,7 +76,7 @@ class Kick:
                         base_url (str, optional): The URL to the Kick API. Defaults to `KICK_API_BASE_URL`.
                         auth_base_url (str, optional): The URL to the Kick API auth server. Defaults to `KICK_AUTH_BASE_URL`.
                         session_timeout (int, optional): Override the time in seconds before any request times out.
-                                Defaults to `300`.
+                                Defaults to aiohttp default (`300` seconds).
                 """
                 self.app_id = app_id
                 self.app_secret = app_secret
@@ -289,8 +291,8 @@ class Kick:
 
         async def _check_request_return(  # noqa: C901
                 self,
-                session: httpx.AsyncClient,
-                response: httpx.Response,
+                session: ClientSession,
+                response: ClientResponse,
                 method: str,
                 url: str,
                 auth_type: OAuthType,
@@ -299,13 +301,12 @@ class Kick:
                 body_json: dict | None = None,
                 custom_headers: dict[str, str] | None = None,
                 retries: int = 1,
-        ) -> httpx.Response:
-                if response.status_code == 503:
+        ) -> ClientResponse:
+                if response.status == 503:
                         if retries < 1:
-                                raise KickBackendException(f"The Kick API returned a server error ({response.status_code}).")
+                                raise KickBackendException(f"The Kick API returned a server error ({response.status}).")
 
-                        self.logger.warning("Failed with status %d, retrying...", response.status_code)
-                        await response.aclose()
+                        self.logger.warning("Failed with status %d, retrying...", response.status)
                         return await self._api_request(
                                 method,
                                 session,
@@ -319,16 +320,18 @@ class Kick:
 
                 # self.logger.info(response.content)
                 try:
-                        body = json.loads(response.content)
+                        body = json.loads(await response.read())
                 except json.JSONDecodeError:
                         body = {}
                 data = body.get("data")
-                msg = body.get("message", "Message error not provided") + f". Extra data: {data}" if data is not None else ""
-                if response.status_code == 401:
+                msg = (body.get("message") or "Message error not provided") + (
+                        f". Data provided: {data}" if data is not None and len(data) else ""
+                )
+                if response.status == 401:
                         if retries < 1:
                                 self.logger.warning(
                                         'Failed with status %d and can\'t refresh. Message: "%s"',
-                                        response.status_code,
+                                        response.status,
                                         msg,
                                 )
                                 raise UnauthorizedException(msg)
@@ -336,16 +339,15 @@ class Kick:
                         if not self.auto_refresh_auth:
                                 self.logger.warning(
                                         'Failed with status %d and auto-refresh is disabled. Message: "%s"',
-                                        response.status_code,
+                                        response.status,
                                         msg,
                                 )
                                 raise UnauthorizedException(msg)
 
                         self.logger.warning(
                                 "Failed with status %d, trying to refresh token...",
-                                response.status_code,
+                                response.status,
                         )
-                        await response.aclose()
                         await self.refresh_used_token()
                         return await self._api_request(
                                 method,
@@ -358,22 +360,21 @@ class Kick:
                                 retries=retries - 1,
                         )
 
-                if response.status_code == 500:
-                        self.logger.warning('Failed with status %d. Message: "%s"', response.status_code, msg)
+                if response.status == 500:
+                        self.logger.warning('Failed with status %d. Message: "%s"', response.status, msg)
                         raise KickBackendException(f"Internal Server Error: {msg}")
 
-                if response.status_code == 400:
-                        raise KickAPIException(f"Bad Request ({response.status_code}): {msg}")
+                if response.status == 400:
+                        raise KickAPIException(f"Bad Request ({response.status}): {msg}")
 
-                if response.status_code == 404:
+                if response.status == 404:
                         raise KickResourceNotFound(msg)
 
-                if response.status_code == 429:
+                if response.status == 429:
                         date = response.headers.get("date")
                         cool_down = 5 if not date else (60 - int(date.split(":")[-1].split(" ")[0]) + 0.1)
                         self.logger.warning("Reached rate limit, waiting for reset (%ds)", cool_down)
                         await asyncio.sleep(cool_down)
-                        await response.aclose()
                         return await self._api_request(
                                 method,
                                 session,
@@ -391,7 +392,7 @@ class Kick:
         async def _api_request(
                 self,
                 method: str,
-                session: httpx.AsyncClient,
+                session: ClientSession,
                 url: str,
                 auth_type: OAuthType,
                 required_scope: list[OAuthScope],
@@ -399,7 +400,7 @@ class Kick:
                 body_json: dict | None = None,
                 custom_headers: dict[str, str] | None = None,
                 retries: int = 1,
-        ) -> httpx.Response:
+        ) -> ClientResponse:
                 headers = self._generate_headers(
                         auth_type,
                         required_scope,
@@ -437,12 +438,12 @@ class Kick:
                 _page = url_params.get("page", 1)
                 _first = True
                 url = helper.clean_url(self.base_url, endpoint)
-                async with httpx.AsyncClient(timeout=self.session_timeout) as ses:
+                async with ClientSession(timeout=self.session_timeout) as ses:
                         while _first or _page is not None:
                                 _first = False
                                 url_params["page"] = _page
                                 _url = helper.build_url(url, url_params, remove_none=True, split_lists=split_lists)
-                                r = await self._api_request(
+                                async with await self._api_request(
                                         method,
                                         ses,
                                         _url,
@@ -450,11 +451,10 @@ class Kick:
                                         auth_scope,
                                         body_json=body_json,
                                         custom_headers=custom_headers,
-                                )
-                                if error_handler is not None and r.status_code in error_handler:
-                                        raise error_handler[r.status_code]
-                                data = json.loads(r.content)
-                                await r.aclose()
+                                ) as r:
+                                        if error_handler is not None and r.status in error_handler:
+                                                raise error_handler[r.status]
+                                        data = json.loads(await r.read())
                                 entries = data.get("data", [])
                                 _page = None if not len(entries) else (_page or 1) + 1
                                 for entry in entries:
@@ -476,8 +476,9 @@ class Kick:
         ) -> AsyncIterKickObject[T]:
                 url = helper.clean_url(self.base_url, endpoint)
                 _url = helper.build_url(url, url_params, remove_none=True, split_lists=split_lists)
-                async with httpx.AsyncClient(timeout=self.session_timeout) as ses:
-                        r = await self._api_request(
+                async with (
+                        ClientSession(timeout=self.session_timeout) as ses,
+                        await self._api_request(
                                 method,
                                 ses,
                                 _url,
@@ -485,9 +486,9 @@ class Kick:
                                 auth_scope,
                                 body_json=body_json,
                                 custom_headers=custom_headers,
-                        )
-                        data = json.loads(r.content)
-                        await r.aclose()
+                        ) as r,
+                ):
+                        data = json.loads(await r.read())
                 url_params.setdefault("page", 1)
                 if in_data:
                         data = data["data"]
@@ -630,9 +631,10 @@ class Kick:
                 error_handler: Mapping[int, BaseException] | None = None,
         ) -> T | int | str | dict | Sequence[T] | Sequence[str] | None:
                 url = helper.clean_url(self.base_url, endpoint)
-                async with httpx.AsyncClient(timeout=self.session_timeout) as ses:
-                        _url = helper.build_url(url, url_params, remove_none=True, split_lists=split_lists)
-                        r = await self._api_request(
+                _url = helper.build_url(url, url_params, remove_none=True, split_lists=split_lists)
+                async with (
+                        ClientSession(timeout=self.session_timeout) as ses,
+                        await self._api_request(
                                 method,
                                 ses,
                                 _url,
@@ -640,17 +642,18 @@ class Kick:
                                 auth_scope,
                                 body_json=body_json,
                                 custom_headers=custom_headers,
-                        )
+                        ) as r,
+                ):
                         # self.logger.info(r.content)
-                        if error_handler is not None and r.status_code in error_handler:
-                                raise error_handler[r.status_code]
+                        if error_handler is not None and r.status in error_handler:
+                                raise error_handler[r.status]
                         if result_type == ResultType.STATUS_CODE:
-                                return r.status_code
+                                return r.status
                         if result_type == ResultType.TEXT:
-                                return r.text
+                                return await r.text()
 
                         if return_type is not None:
-                                data = json.loads(r.content)
+                                data = json.loads(await r.read())
                                 if isinstance(return_type, dict):
                                         return data
                                 origin = return_type.__origin__ if hasattr(return_type, "__origin__") else None  # type: ignore
@@ -679,17 +682,25 @@ class Kick:
                         "grant_type": "client_credentials",
                 }
                 url = helper.clean_url(self.auth_base_url, Endpoints.Auth.TOKEN)
-                async with httpx.AsyncClient(timeout=self.session_timeout) as ses:
-                        r = await ses.post(url, data=body, headers=headers)
-                if r.status_code != 200:
-                        raise KickAuthorizationException(f"Authentication failed with code {r.status_code} ({r.text})")
-                try:
-                        data = json.loads(r.content)
-                        self._app_auth_token = data["access_token"]
-                except ValueError as err:
-                        raise KickAuthorizationException("Authentication response did not have a valid JSON body") from err
-                except KeyError as err:
-                        raise KickAuthorizationException("Authentication response did not contain access_token") from err
+                async with (
+                        ClientSession(timeout=self.session_timeout) as ses,
+                        await ses.post(url, data=body, headers=headers) as r,
+                ):
+                        if r.status != 200:
+                                raise KickAuthorizationException(
+                                        f"Authentication failed with code {r.status} ({await r.text()})"
+                                )
+                        try:
+                                data = json.loads(await r.read())
+                                self._app_auth_token = data["access_token"]
+                        except ValueError as err:
+                                raise KickAuthorizationException(
+                                        "Authentication response did not have a valid JSON body"
+                                ) from err
+                        except KeyError as err:
+                                raise KickAuthorizationException(
+                                        "Authentication response did not contain access_token"
+                                ) from err
 
         async def authenticate_app(
                 self,
@@ -1141,7 +1152,7 @@ class Kick:
                         split_lists=True,
                 )
 
-        async def get_livestream_stats(self) -> api.LiveStreamStats | None:
+        async def get_livestream_stats(self) -> api.LiveStreamStats:
                 """Get Livestreams Stats.
 
                 For detailed documentation, see here: https://docs.kick.com/apis/livestreams#get-livestreams-stats
@@ -1150,7 +1161,7 @@ class Kick:
                         "GET",
                         Endpoints.API.LIVESTREAMS_STATS,
                         {},
-                        OAuthType.USER,
+                        OAuthType.EITHER,
                         [],
                         api.LiveStreamStats,
                 )
@@ -1162,6 +1173,33 @@ class Kick:
                 """
                 response = await self._build_result("GET", Endpoints.API.PUBLIC_KEY, {}, OAuthType.NONE, [], api.PublicKey)
                 return response.public_key
+
+        async def get_kicks_leaderboard(self, top: int | None = None) -> api.KicksLeaderboard:
+                """Gets the KICKs leaderboard for the authenticated broadcaster.
+
+                For detailed documentation, see here: https://docs.kick.com/apis/kicks#get-kicks-leaderboard
+
+                Args:
+                        top (int | None, optional): The number of entries from the top of the leaderboard to return.
+                                For example, 10 will fetch the top 10 entries. Defaults to `None`.
+
+                Raises:
+                        ValueError: `top` must be between 1 and 100.
+                """
+                if top and not (0 < top < 101):
+                        raise ValueError("'top' must be between 1 and 100")
+
+                params = {
+                        "top": top,
+                }
+                return await self._build_result(
+                        "GET",
+                        Endpoints.API.KICKS_LEADERBOARD,
+                        params,
+                        OAuthType.USER,
+                        [OAuthScope.KICKS_READ],
+                        api.KicksLeaderboard,
+                )
 
         async def get_events_subscriptions(
                 self,
@@ -1187,7 +1225,7 @@ class Kick:
 
         async def post_events_subscriptions(
                 self,
-                events: list[WebhookEvents],
+                events: list[EventSubEvents | WebhookEvents],
                 broadcaster_user_id: int | None = None,
                 method: Literal["webhook"] = "webhook",
                 *,
@@ -1246,9 +1284,15 @@ class Kick:
 
                 Raises:
                         ValueError: `event_id` can't be an empty list.
+                        ValueError: `event_id` must be max 50 entries.
                 """
-                if not len(event_id):
+                length = len(event_id)
+                if not length:
                         raise ValueError("event_id can't be an empty list")
+
+                if length > 50:
+                        raise ValueError("event_id must be max 50 entries")
+
                 params = {"id": event_id}
                 return (
                         await self._build_result(

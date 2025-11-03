@@ -14,6 +14,7 @@ from betterKickAPI.object.api import (
         Channel,
         DeleteModerationBanResponse,
         EventSubscription,
+        KicksLeaderboard,
         LiveStream,
         LiveStreamStats,
         PostChatMessageResponse,
@@ -22,7 +23,7 @@ from betterKickAPI.object.api import (
         TokenIntrospection,
         User,
 )
-from betterKickAPI.types import WebhookEvents
+from betterKickAPI.types import EventSubEvents
 
 if TYPE_CHECKING:
         from collections.abc import Generator
@@ -242,6 +243,20 @@ async def test_public_key(kick_api: Kick, errors: list[Exception]):
         expect(public_key, str, errors)
 
 
+@pytest.mark.asyncio
+async def test_kicks_leaderboard(kick_api: Kick, errors: list[Exception]):
+        leaderboard = await kick_api.get_kicks_leaderboard()
+        expect(leaderboard, KicksLeaderboard, errors)
+
+        top = 5
+        leaderboard = await kick_api.get_kicks_leaderboard(top)
+        expect(leaderboard, KicksLeaderboard, errors)
+
+        assert len(leaderboard.lifetime) == 5
+        assert len(leaderboard.month) == 5
+        assert len(leaderboard.week) == 5
+
+
 @pytest.mark.parametrize("query", CHANNEL_QUERIES)
 @pytest.mark.asyncio
 async def test_post_n_delete_event_subscription(kick_api: Kick, errors: list[Exception], query: str):
@@ -250,7 +265,7 @@ async def test_post_n_delete_event_subscription(kick_api: Kick, errors: list[Exc
                 pytest.skip(f"No channel returned for query: {query}")
 
         subscription_data = await kick_api.post_events_subscriptions(
-                [WebhookEvents.CHANNEL_FOLLOW],
+                [EventSubEvents.CHANNEL_FOLLOW],
                 channels[0].broadcaster_user_id,
         )
         if not len(subscription_data):

@@ -9,6 +9,37 @@ and this project adheres to [Semantic Versioning].
 
 - /
 
+## [1.0.0] - 2025-11-03
+
+### Added
+
+- EventSubBase abstract class.
+- `endpoint` param in Webhook.start().
+- GET KicksLeaderboard endpoint.
+- `kicks:read` OAuthScope.
+- test_webhooks_events.py test.
+
+### Changed
+
+- Webhook.start() is now sync.
+- Migrated from httpx to aiohttp.
+- Kick.get_livestream_stats() now returns `LiveStreamStats` instead of `api.LiveStreamStats | None`.
+- Kick.get_livestream_stats() OAuthType from USER to EITHER.
+- Socketify Webhook server now logs error instead of exception (to avoid spam of stack trace) and has it own except block.
+- Improved tests in general (mostly webhook related).
+- Updated some dependencies.
+
+### Deprecated
+
+- WebhookEvents, now use EventSubEvents.
+
+### Fixed
+
+- Webhook.get_public_key() lock misplaced.
+- EventSub BannedMetadata.expires_at now defaults to `None`.
+- Kick.delete_events_subscriptions() **undocumented** 50 entries limit.
+- Socketify servers overriding logger level.
+
 ## [0.3.0] - 2025-10-23
 
 ### Added

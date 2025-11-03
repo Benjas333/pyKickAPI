@@ -13,8 +13,8 @@ from pathlib import PurePath
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import aiofiles
-import httpx
 import orjson as json
+from aiohttp import ClientSession
 
 from betterKickAPI import helper
 from betterKickAPI.constants import (
@@ -51,7 +51,7 @@ async def refresh_access_token(
         refresh_token: str,
         app_id: str,
         app_secret: str,
-        session: httpx.AsyncClient | None = None,
+        session: ClientSession | None = None,
         auth_base_url: str = KICK_AUTH_BASE_URL,
 ) -> tuple[str, str]:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
@@ -62,12 +62,11 @@ async def refresh_access_token(
                 "grant_type": "refresh_token",
         }
         url = helper.clean_url(auth_base_url, Endpoints.Auth.TOKEN)
-        ses = session if session is not None else httpx.AsyncClient()
-        r = await ses.post(url, data=body, headers=headers)
-        data = json.loads(r.content)
-        await r.aclose()
+        ses = session if session is not None else ClientSession()
+        async with ses.post(url, data=body, headers=headers) as r:
+                data = json.loads(await r.read())
         if session is None:
-                await ses.aclose()
+                await ses.close()
         if "error" in data:
                 raise InvalidRefreshTokenException(data["error"])
         r.raise_for_status()
@@ -76,40 +75,37 @@ async def refresh_access_token(
 
 async def validate_token(
         access_token: str,
-        session: httpx.AsyncClient | None = None,
+        session: ClientSession | None = None,
         auth_base_url: str = KICK_API_BASE_URL,
 ) -> TokenIntrospection:
         headers = {"Authorization": f"Bearer {access_token}"}
         url = helper.clean_url(auth_base_url, Endpoints.API.TOKEN_INTROSPECT)
-        ses = session if session is not None else httpx.AsyncClient()
-        r = await ses.post(url, headers=headers)
-        if r.status_code == 401:
-                await r.aclose()
-                return TokenIntrospection()
-        r.raise_for_status()
-        data = json.loads(r.content)
-        await r.aclose()
+        ses = session if session is not None else ClientSession()
+        async with ses.post(url, headers=headers) as r:
+                if r.status == 401:
+                        return TokenIntrospection()
+                r.raise_for_status()
+                data = json.loads(await r.read())
         if session is None:
-                await ses.aclose()
+                await ses.close()
         return TokenIntrospection(**data.get("data", {}))
 
 
 async def revoke_token(
         token: str,
         token_hint_type: Literal["access_token", "refresh_token"],
-        session: httpx.AsyncClient | None = None,
+        session: ClientSession | None = None,
         auth_base_url: str = KICK_AUTH_BASE_URL,
 ) -> bool:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         params = {"token": token, "token_type_hint": token_hint_type}
         url = helper.clean_url(auth_base_url, Endpoints.Auth.REVOKE_TOKEN)
         _url = helper.build_url(url, params)
-        ses = session if session is not None else httpx.AsyncClient()
-        r = await ses.post(_url, headers=headers)
-        resp = r.is_success
-        await r.aclose()
+        ses = session if session is not None else ClientSession()
+        async with ses.post(_url, headers=headers) as r:
+                resp = r.status == 200
         if session is None:
-                await ses.aclose()
+                await ses.close()
         return resp
 
 
@@ -129,7 +125,7 @@ async def revoke_token(
 #                 self._expires_in: datetime | None = None
 
 #         async def get_code(self) -> tuple[str, str]:
-#                 async with httpx.AsyncClient(timeout=self._kick.session_timeout) as session:
+#                 async with ClientSession(timeout=self._kick.session_timeout) as session:
 #                         data = {"client_id": self._client_id, "scopes": helper.build_scope(self._scopes)}
 #                         result = await session.post(self.auth_base_url + "device", data=data)
 #                         data = json.loads(result.content)
@@ -148,7 +144,7 @@ async def revoke_token(
 #                         "device_code": self._device_code,
 #                         "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
 #                 }
-#                 async with httpx.AsyncClient(timeout=self._kick.session_timeout) as session:
+#                 async with ClientSession(timeout=self._kick.session_timeout) as session:
 #                         while True:
 #                                 if datetime.now() > self._expires_in:
 #                                         raise TimeoutError("Timed out waiting for auth complete")
@@ -378,10 +374,11 @@ class UserAuthenticator:
                 }
                 headers = {"Content-Type": "application/x-www-form-urlencoded"}
                 url = helper.build_url(helper.clean_url(self.auth_base_url, Endpoints.Auth.TOKEN), {})
-                async with httpx.AsyncClient(timeout=self._kick.session_timeout) as session:
-                        response = await session.post(url, data=body, headers=headers)
-                        data: dict = json.loads(response.content)
-                        await response.aclose()
+                async with (
+                        ClientSession(timeout=self._kick.session_timeout) as session,
+                        session.post(url, data=body, headers=headers) as response,
+                ):
+                        data: dict = json.loads(await response.read())
 
                 self.stop()
                 token, refresh = data.get("access_token"), data.get("refresh_token")

@@ -12,6 +12,7 @@ __all__ = [
         "Channel",
         "DeleteModerationBanResponse",
         "EventSubscription",
+        "KicksLeaderboard",
         "LiveStream",
         "PostChatMessageResponse",
         "PostEventSubscriptionResponse",
@@ -142,3 +143,18 @@ class PostEventSubscriptionResponse(KickObject):
         version: int
         error: str | None = None
         subscription_id: str | None = None
+
+
+@dataclasses.dataclass
+class KicksLeaderboardEntry(KickObject):
+        gifted_amount: int
+        rank: int
+        user_id: int
+        username: str
+
+
+@dataclasses.dataclass
+class KicksLeaderboard(KickObject):
+        lifetime: list[KicksLeaderboardEntry]
+        month: list[KicksLeaderboardEntry]
+        week: list[KicksLeaderboardEntry]

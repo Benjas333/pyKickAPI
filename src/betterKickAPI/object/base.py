@@ -13,8 +13,8 @@ from typing import (
         Union,
 )
 
-import httpx
 import orjson as json
+from aiohttp import ClientResponse, ClientSession
 from pydantic import BaseModel, ConfigDict, Field, RootModel, dataclasses
 
 from betterKickAPI import helper
@@ -255,7 +255,7 @@ class KickObjectExtras(KickObject):
 
 
 class AsyncIterData(BaseModel):
-        req: Callable[..., Awaitable[httpx.Response]]
+        req: Callable[..., Awaitable[ClientResponse]]
         method: str
         url: str
         param: dict
@@ -330,8 +330,9 @@ class AsyncIterKickObject(KickObject, Generic[T]):
                         remove_none=True,
                         split_lists=self.iter_data.split,
                 )
-                async with httpx.AsyncClient() as ses:
-                        r = await self.iter_data.req(
+                async with (
+                        ClientSession() as ses,
+                        await self.iter_data.req(
                                 self.iter_data.method,
                                 ses,
                                 _url,
@@ -339,12 +340,12 @@ class AsyncIterKickObject(KickObject, Generic[T]):
                                 self.iter_data.auth_s,
                                 data=self.iter_data.body,
                                 custom_headers=self.iter_data.custom_headers,
-                        )
+                        ) as r,
+                ):
                         try:
-                                resp_data = json.loads(r.content)
+                                resp_data = json.loads(await r.read())
                         except json.JSONDecodeError:
                                 resp_data = {}
-                        await r.aclose()
 
                 if self.iter_data.in_data:
                         resp_data = resp_data.get("data", resp_data)

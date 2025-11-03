@@ -95,7 +95,7 @@ class LivestreamMetadata(KickObject):
 class BannedMetadata(KickObject):
         reason: str
         created_at: datetime
-        expires_at: datetime | None
+        expires_at: datetime | None = None
 
 
 @dataclasses.dataclass

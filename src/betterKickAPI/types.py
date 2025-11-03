@@ -5,9 +5,11 @@ from enum import Enum, auto
 
 from enum_tools import document_enum
 from strenum import StrEnum
+from typing_extensions import deprecated
 
 __all__ = [
         "AlreadyConnectedError",
+        "EventSubEvents",
         "EventSubSubscriptionError",
         "InvalidRefreshTokenException",
         "InvalidTokenException",
@@ -42,6 +44,8 @@ class OAuthScope(StrEnum):
         """Subscribe to all channel events on Kick e.g. chat messages, follows, subscriptions"""
         MODERATION_BAN = "moderation:ban"
         """Execute moderation actions for moderators"""
+        KICKS_READ = "kicks:read"
+        """View KICKs related information in Kick e.g leaderboards, etc."""
 
 
 class OAuthType(Enum):
@@ -57,7 +61,7 @@ class _WebhookEvent:
         version: int
 
 
-class WebhookEvents(Enum):
+class EventSubEvents(Enum):
         # """Represents the possible events to listen for using `~kickAPI.webhook.Webhook.register_event()`."""
 
         # READY = _WebhookEvent(name="ready", version=1)
@@ -80,6 +84,19 @@ class WebhookEvents(Enum):
         """Fired when a user has been banned from a channel."""
         KICKS_GIFTED = _WebhookEvent(name="kicks.gifted", version=1)
         """Fired when a user gifts kicks to a channel."""
+
+
+@deprecated("Use EventSubEvents instead")
+class WebhookEvents(Enum):
+        CHAT_MESSAGE = EventSubEvents.CHAT_MESSAGE.value
+        CHANNEL_FOLLOW = EventSubEvents.CHANNEL_FOLLOW.value
+        CHANNEL_SUBSCRIPTION_RENEWAL = EventSubEvents.CHANNEL_SUBSCRIPTION_RENEWAL.value
+        CHANNEL_SUBSCRIPTION_GIFTS = EventSubEvents.CHANNEL_SUBSCRIPTION_GIFTS.value
+        CHANNEL_SUBSCRIPTION_CREATED = EventSubEvents.CHANNEL_SUBSCRIPTION_CREATED.value
+        LIVESTREAM_STATUS_UPDATED = EventSubEvents.LIVESTREAM_STATUS_UPDATED.value
+        LIVESTREAM_METADATA_UPDATED = EventSubEvents.LIVESTREAM_METADATA_UPDATED.value
+        MODERATION_BANNED = EventSubEvents.MODERATION_BANNED.value
+        KICKS_GIFTED = EventSubEvents.KICKS_GIFTED.value
 
 
 class KickAPIException(Exception):

@@ -41,6 +41,7 @@ class _API:
         LIVESTREAMS_STATS = _Endpoint(base_url=KICK_API_BASE_URL, suffix="/livestreams/stats")
         PUBLIC_KEY = _Endpoint(base_url=KICK_API_BASE_URL, suffix="/public-key")
         EVENTS_SUBSCRIPTIONS = _Endpoint(base_url=KICK_API_BASE_URL, suffix="/events/subscriptions")
+        KICKS_LEADERBOARD = _Endpoint(base_url=KICK_API_BASE_URL, suffix="/kicks/leaderboard")
 
 
 class _Auth:

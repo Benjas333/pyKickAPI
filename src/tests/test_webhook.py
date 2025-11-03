@@ -15,6 +15,7 @@ from betterKickAPI.eventsub.events import (
         ChannelSubscriptionNewEvent,
         ChannelSubscriptionRenewalEvent,
         ChatMessageEvent,
+        KicksGiftedEvent,
         LivestreamMetadataUpdatedEvent,
         LivestreamStatusUpdatedEvent,
         ModerationBannedEvent,
@@ -24,8 +25,8 @@ from betterKickAPI.eventsub.webhook import KickWebhook
 if TYPE_CHECKING:
         from betterKickAPI.kick import Kick
 
-FORCE_APP = True
-timeout = 60.0  # in seconds
+FORCE_APP: bool = True
+timeout: float = 60  # in seconds
 logger = getLogger("kickAPI.tests.test_webhook")
 
 
@@ -48,7 +49,7 @@ def sync_on_message(payload: ChatMessageEvent):
 
 async def async_on_channel_follow(payload: ChannelFollowEvent):
         expect(payload, ChannelFollowEvent)
-        await asyncio.sleep(5)  # example stuff
+        await asyncio.sleep(1)  # example stuff
         logger.info("[%s] %s started following!", payload.broadcaster.channel_slug, payload.follower.channel_slug)
 
 
@@ -107,6 +108,20 @@ def on_moderation_ban(payload: ModerationBannedEvent):
         )
 
 
+def on_kicks_gifted(payload: KicksGiftedEvent):
+        expect(payload, KicksGiftedEvent)
+        logger.info(
+                "[%s] %s has gifted %d kicks (%s-%s): %s\nFull send/name:%s",
+                payload.broadcaster.channel_slug,
+                payload.sender.channel_slug,
+                payload.gift.amount,
+                payload.gift.type,
+                payload.gift.tier,
+                payload.gift.message,
+                payload.gift.name,
+        )
+
+
 @pytest.mark.asyncio
 async def test_webhook(kick_api: Kick):
         global timeout
@@ -117,39 +132,68 @@ async def test_webhook(kick_api: Kick):
                 webhook.force_app_auth = False
                 await webhook.unsubscribe_all()
                 webhook.force_app_auth = FORCE_APP
-        await webhook.start()
+        try:
+                webhook.start()
 
-        livestream_ids = [live.broadcaster_user_id for live in await kick_api.get_livestreams(limit=3, sort="viewer_count")]
-        sub_ids = []
+                waiting = 10
+                logger.info("Waiting %ds for webhook url setting...", waiting)
+                while waiting > 0:
+                        logger.info("%ds left", waiting)
+                        await asyncio.sleep(1.0)
+                        waiting -= 1
 
-        for user_id in livestream_ids:
-                sub_ids.append(await webhook.listen_chat_message_sent(user_id, sync_on_message))
-                sub_ids.append(await webhook.listen_channel_follow(user_id, async_on_channel_follow))
-                sub_ids.append(await webhook.listen_channel_subscription_new(user_id, on_channel_subscription_new))
-                sub_ids.append(await webhook.listen_channel_subscription_renewal(user_id, on_channel_subscription_renewal))
-                sub_ids.append(await webhook.listen_channel_subscription_gifts(user_id, on_channel_subscription_gifts))
-                sub_ids.append(await webhook.listen_livestream_status_updated(user_id, on_livestream_status_updated))
-                sub_ids.append(await webhook.listen_livestream_metadata_updated(user_id, on_livestream_metadata_updated))
-                sub_ids.append(await webhook.listen_moderation_banned(user_id, on_moderation_ban))
+                livestreams = [
+                        (live.broadcaster_user_id, live.slug)
+                        for live in await kick_api.get_livestreams(limit=3, sort="viewer_count")
+                ]
+                sub_ids = []
 
-        events = await kick_api.get_events_subscriptions(force_app_auth=FORCE_APP)
-        events_users_ids = {event.broadcaster_user_id for event in events}
-        missing_ids = [f"{user_id}" for user_id in livestream_ids if user_id not in events_users_ids]
-        if len(missing_ids):
-                pytest.fail(f"There's missing user IDs in the actual subscribed events: {missing_ids}")
+                for user_id, slug in livestreams:
+                        logger.info("Subscribing to: %s", slug)
+                        sub_ids.append(await webhook.listen_chat_message_sent(user_id, sync_on_message))
+                        sub_ids.append(await webhook.listen_channel_follow(user_id, async_on_channel_follow))
+                        sub_ids.append(await webhook.listen_channel_subscription_new(user_id, on_channel_subscription_new))
+                        sub_ids.append(
+                                await webhook.listen_channel_subscription_renewal(user_id, on_channel_subscription_renewal)
+                        )
+                        sub_ids.append(
+                                await webhook.listen_channel_subscription_gifts(user_id, on_channel_subscription_gifts)
+                        )
+                        sub_ids.append(await webhook.listen_livestream_status_updated(user_id, on_livestream_status_updated))
+                        sub_ids.append(
+                                await webhook.listen_livestream_metadata_updated(user_id, on_livestream_metadata_updated)
+                        )
+                        sub_ids.append(await webhook.listen_moderation_banned(user_id, on_moderation_ban))
+                        sub_ids.append(await webhook.listen_kicks_gifted(user_id, on_kicks_gifted))
 
-        extra_ids = [f"{event_id}" for event_id in events_users_ids if event_id not in livestream_ids]
-        if len(extra_ids):
-                pytest.fail(f"There's extra user IDs in the actual subscribed events: {extra_ids}")
+                events = await kick_api.get_events_subscriptions(force_app_auth=FORCE_APP)
+                events_users_ids = {event.broadcaster_user_id for event in events}
+                expected_user_ids = {user_id for (user_id, _) in livestreams}
 
-        if len(events) != len(sub_ids):
-                "The actual amount of subscribed events differs from the requested ones"
+                missing_ids = expected_user_ids.difference(events_users_ids)
+                if len(missing_ids):
+                        pytest.fail(f"There's missing user IDs in the actual subscribed events: {missing_ids}")
 
-        while timeout > 0:
-                logger.info("%fs left", timeout)
-                await asyncio.sleep(1.0)
-                timeout -= 1
+                extra_ids = events_users_ids.difference(expected_user_ids)
+                if len(extra_ids):
+                        pytest.fail(f"There's extra user IDs in the actual subscribed events: {extra_ids}")
 
-        await webhook.stop()
+                if len(events) != len(sub_ids):
+                        warnings.warn(
+                                "The actual amount of subscribed events differs from the requested ones",
+                                pytest.PytestWarning,
+                                stacklevel=1,
+                        )
+
+                while timeout > 0:
+                        if timeout < 11:
+                                logger.info("%ds left", timeout)
+                        await asyncio.sleep(1.0)
+                        timeout -= 1
+        except KeyboardInterrupt:
+                pass
+        finally:
+                await webhook.stop()
+                logger.info("Webhook stopped")
         events = await kick_api.get_events_subscriptions(force_app_auth=FORCE_APP)
         assert len(events) == 0
