@@ -306,7 +306,7 @@ wheels = [
 
 [[package]]
 name = "betterkickapi"
-version = "0.3.0"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
