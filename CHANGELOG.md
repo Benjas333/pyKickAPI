@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning].
 
 - /
 
+## [1.0.1] - 2025-11-03
+
+### Changed
+
+- KickWebhook.handle_incoming() now returns 200 status code on duplicated messages to avoid Kick retrying to send the message.
+
 ## [1.0.0] - 2025-11-03
 
 ### Added

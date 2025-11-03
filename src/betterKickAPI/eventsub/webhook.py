@@ -360,6 +360,7 @@ class KickWebhook(EventSubBase):
 
                 async with self._lock:
                         if message_id in self._seen_message_ids:
+                                resp.status = 200
                                 resp.text = f"Duplicated ID: {message_id}. Discarded."
                                 return resp
 
